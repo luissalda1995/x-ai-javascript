@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Function Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@9.4.4/lib/browser/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; }
+        .function-input { margin: 10px 0; }
+        #functionInputs { margin-bottom: 20px; }
+        #chartContainer { width: 80vw; height: 60vh; margin: 20px auto; }
+        .toggle { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="functionInputs">
+        <div class="function-input">
+            <input type="text" class="function" placeholder="Enter function, e.g., x^2">
+            <input type="checkbox" class="toggle" checked> Show
+        </div>
+    </div>
+    <button onclick="addFunctionInput()">Add Function</button>
+    <div id="chartContainer">
+        <canvas id="functionChart"></canvas>
+    </div>
+
+    <script>
+    const ctx = document.getElementById('functionChart').getContext('2d');
+    let chart = null;
+    const functionInputs = document.getElementById('functionInputs');
+
+    function addFunctionInput() {
+        const div = document.createElement('div');
+        div.className = 'function-input';
+        div.innerHTML = `
+            <input type="text" class="function" placeholder="Enter function">
+            <input type="checkbox" class="toggle" checked> Show
+        `;
+        functionInputs.appendChild(div);
+    }
+
+    function plotFunctions() {
+        if (chart) chart.destroy();
+        
+        const functions = Array.from(document.querySelectorAll('.function')).map((input, index) => {
+            return {
+                expr: input.value,
+                visible: input.nextElementSibling.checked,
+                color: `hsl(${index * 360 / document.querySelectorAll('.function').length}, 100%, 50%)`
+            };
+        });
+
+        const data = {
+            labels: Array.from({length: 200}, (_, i) => i / 20 - 5),
+            datasets: functions.filter(f => f.visible).map(f => {
+                const xValues = Array.from({length: 200}, (_, i) => i / 20 - 5);
+                const yValues = xValues.map(x => {
+                    try {
+                        return math.evaluate(f.expr, {x: x});
+                    } catch (e) {
+                        return NaN;
+                    }
+                });
+                return {
+                    label: f.expr,
+                    data: yValues,
+                    borderColor: f.color,
+                    fill: false,
+                    borderWidth: 2
+                };
+            })
+        };
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                scales: {
+                    y: { beginAtZero: false },
+                    x: { title: { display: true, text: 'X Axis' }}
+                },
+                plugins: {
+                    zoom: { zoom: { wheel: { enabled: true }, mode: 'xy' }}
+                }
+            }
+        });
+    }
+
+    // Initial setup
+    addFunctionInput();
+    functionInputs.addEventListener('input', plotFunctions);
+    functionInputs.addEventListener('change', plotFunctions);
+    plotFunctions();
+    </script>
+</body>
+</html>

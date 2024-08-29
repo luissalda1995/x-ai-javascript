@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Function Visualizer</title>
     <script src="https://cdn.jsdelivr.net/npm/mathjs@9.4.4/lib/browser/math.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,116 +14,112 @@
         #functionInputs {
             padding: 10px;
         }
-        .function-input {
-            margin-bottom: 10px;
+        .functionInput {
+            width: 50%;
+            padding: 5px;
+            font-size: 16px;
         }
         #chartContainer {
             width: 80vw;
             height: 60vh;
             margin: 20px auto;
         }
+        #toggleFunctions {
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
     <div id="functionInputs">
-        <div class="function-input">
-            <input type="text" class="functionInputField" placeholder="Enter function, e.g., x^2 + 3*x - 4">
-            <button class="removeFunction" style="display:none;">Remove</button>
-        </div>
+        <input type="text" class="functionInput" placeholder="Enter function, e.g., x^2 + 3*x - 4">
     </div>
     <button onclick="addFunctionInput()">Add Function</button>
+    <div id="toggleFunctions"></div>
     <div id="chartContainer">
         <canvas id="functionChart"></canvas>
     </div>
 
     <script>
-        let functionCount = 0;
-        const colors = ['red', 'blue', 'green', 'orange', 'purple'];
-        let chart = null;
+        const functionInputsDiv = document.getElementById('functionInputs');
+        const toggleFunctionsDiv = document.getElementById('toggleFunctions');
+        const ctx = document.getElementById('functionChart').getContext('2d');
+        let chart;
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+        let functionIndex = 0;
 
         function addFunctionInput() {
-            const inputContainer = document.getElementById('functionInputs');
-            const newInputDiv = document.createElement('div');
-            newInputDiv.className = 'function-input';
             const newInput = document.createElement('input');
             newInput.type = 'text';
             newInput.placeholder = 'Enter another function';
-            newInput.className = 'functionInputField';
-            const removeButton = document.createElement('button');
-            removeButton.innerText = 'Remove';
-            removeButton.className = 'removeFunction';
-            removeButton.onclick = function() {
-                removeFunctionInput(this);
-            };
-            newInputDiv.appendChild(newInput);
-            newInputDiv.appendChild(removeButton);
-            inputContainer.appendChild(newInputDiv);
-            if (functionCount === 0) {
-                document.querySelector('.removeFunction').style.display = 'inline';
-            }
-            functionCount++;
-            plotAllFunctions();
+            newInput.className = 'functionInput';
+            functionInputsDiv.appendChild(newInput);
+            newInput.addEventListener('input', plotFunctions);
         }
 
-        function removeFunctionInput(button) {
-            button.parentNode.remove();
-            functionCount--;
-            if (functionCount === 1) {
-                document.querySelector('.removeFunction').style.display = 'none';
-            }
-            plotAllFunctions();
-        }
-
-        function plotAllFunctions() {
-            const inputs = document.querySelectorAll('.functionInputField');
-            const datasets = Array.from(inputs).map((input, index) => {
-                const userFunction = input.value;
-                if (!userFunction) return null;
-                const xValues = Array.from({length: 200}, (_, i) => i / 20 - 5);
+        function plotFunctions() {
+            const functions = Array.from(document.querySelectorAll('.functionInput')).map(input => input.value);
+            const datasets = functions.map((func, index) => {
+                const xValues = [...Array(101).keys()].map(x => x - 50);
                 const yValues = xValues.map(x => {
                     try {
-                        return math.evaluate(userFunction, {x: x});
+                        return math.evaluate(func, { x: x });
                     } catch (e) {
                         return NaN;
                     }
                 });
 
                 return {
-                    label: userFunction,
+                    label: func,
                     data: yValues,
                     borderColor: colors[index % colors.length],
                     fill: false,
-                    hidden: false
+                    hidden: !document.getElementById(`toggle_${index}`).checked
                 };
-            }).filter(dataset => dataset !== null);
+            });
+
+            const data = {
+                labels: xValues,
+                datasets: datasets
+            };
 
             if (!chart) {
-                chart = new Chart(document.getElementById('functionChart').getContext('2d'), {
+                chart = new Chart(ctx, {
                     type: 'line',
-                    data: { datasets: datasets },
+                    data: data,
                     options: {
                         scales: {
                             y: { beginAtZero: false }
                         },
                         plugins: {
-                            legend: { display: true },
                             zoom: {
                                 zoom: {
-                                    wheel: { enabled: true },
-                                    mode: 'xy'
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    mode: 'xy',
                                 }
                             }
                         }
                     }
                 });
             } else {
-                chart.data.datasets = datasets;
+                chart.data = data;
                 chart.update();
             }
+
+            // Update visibility toggles
+            toggleFunctionsDiv.innerHTML = '';
+            datasets.forEach((dataset, i) => {
+                const toggleId = `toggle_${i}`;
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" id="${toggleId}" checked> ${dataset.label}`;
+                toggleFunctionsDiv.appendChild(label);
+                document.getElementById(toggleId).addEventListener('change', plotFunctions);
+            });
         }
 
-        // Initial plot
-        addFunctionInput();
+        addFunctionInput();  // Initialize with one input field
+        plotFunctions();  // Initial plot
     </script>
 </body>
 </html>

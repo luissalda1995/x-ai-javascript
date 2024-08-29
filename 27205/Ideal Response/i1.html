@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Math Function Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@9.4.4/lib/browser/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #functionInput {
+        width: 50%;
+        padding: 10px;
+        font-size: 18px;
+      }
+      #chartContainer {
+        width: 80vw;
+        height: 60vh;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <input
+      type="text"
+      id="functionInput"
+      placeholder="Enter function, e.g., x^2 + 3*x - 4"
+    />
+    <div id="chartContainer">
+      <canvas id="functionChart"></canvas>
+    </div>
+
+    <script>
+      const inputField = document.getElementById("functionInput");
+      const ctx = document.getElementById("functionChart").getContext("2d");
+      let chart = null;
+
+      function plotFunction() {
+        const userFunction = inputField.value;
+        if (!userFunction) return;
+
+        const xValues = [...Array(101).keys()].map((x) => x - 50);
+        const yValues = xValues.map((x) => {
+          try {
+            return math.evaluate(userFunction, { x: x });
+          } catch (e) {
+            return NaN;
+          }
+        });
+
+        // Find the minimum point
+        let minY = Math.min(...yValues);
+        let minX = xValues[yValues.indexOf(minY)];
+
+        // Find the maximum point
+        let maxY = Math.max(...yValues);
+        let maxX = xValues[yValues.indexOf(maxY)];
+
+        const labels = xValues;
+        const data = {
+          labels: labels,
+          datasets: [
+            {
+              label: userFunction,
+              data: yValues,
+              borderColor: "rgba(75, 192, 192, 1)",
+              fill: false,
+            },
+            {
+              label: "Minimum Point",
+              data: xValues.map((x) => (x === minX ? minY : null)),
+              borderColor: "rgba(75, 192, 192, 1)",
+              pointBackgroundColor: "rgba(75, 192, 192, 1)",
+              pointRadius: 8,
+              fill: false,
+              showLine: false,
+            },
+            {
+              label: "Maximum Point",
+              data: xValues.map((x) => (x === maxX ? maxY : null)),
+              borderColor: "rgba(75, 192, 192, 1)",
+              pointBackgroundColor: "rgba(75, 192, 192, 1)",
+              pointRadius: 8,
+              fill: false,
+              showLine: false,
+            },
+          ],
+        };
+
+        if (chart) {
+          chart.data = data;
+          chart.update();
+        } else {
+          chart = new Chart(ctx, {
+            type: "line",
+            data: data,
+            options: {
+              scales: {
+                x: { type: "linear", position: "bottom" },
+                y: { beginAtZero: false },
+              },
+              plugins: {
+                zoom: {
+                  zoom: {
+                    wheel: {
+                      enabled: true,
+                    },
+                    mode: "xy",
+                  },
+                },
+              },
+            },
+          });
+        }
+      }
+
+      inputField.addEventListener("input", plotFunction);
+      plotFunction();
+    </script>
+  </body>
+</html>

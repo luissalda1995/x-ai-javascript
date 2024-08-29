@@ -53,7 +53,7 @@
         });
 
         const data = {
-            labels: Array.from({length: 200}, (_, i) => i / 20 - 5),
+            labels: [...Array(101).keys()].map(x => x - 50), // -50 to 50 range
             datasets: functions.filter(f => f.visible).map(f => {
                 const xValues = Array.from({length: 200}, (_, i) => i / 20 - 5);
                 const yValues = xValues.map(x => {

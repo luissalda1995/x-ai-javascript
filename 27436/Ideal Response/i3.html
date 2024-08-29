@@ -25,6 +25,9 @@
             max-width: 900px;
             margin: 40px auto;
         }
+        .focus-task {
+            display: none;
+        }
         .focus-mode #taskList, .focus-mode #calendar, .focus-mode #chartContainer {
             display: none;
         }
@@ -37,7 +40,6 @@
 
 <div class="container">
     <h1 class="text-center">Productivity App with Time Tracking</h1>
-    <button id="toggleFocus" class="btn btn-primary">Toggle Focus Mode</button>
     <div class="row">
         <div class="col-md-6">
             <div class="input-group mb-3">
@@ -58,6 +60,15 @@
             </div>
         </div>
     </div>
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <div class="focus-task">
+                <h2 id="focusTaskName"></h2>
+                <h1 id="timerDisplay">00:00:00</h1>
+                <button class="btn btn-danger" id="stopFocus">Stop Focus</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -72,6 +83,7 @@ $(document).ready(function() {
     let chart;
     let timer = null;
     let currentTask = null;
+    let startTime;
     
     // Initialize FullCalendar and Chart.js
     calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
@@ -115,6 +127,7 @@ $(document).ready(function() {
                         <button class="btn btn-warning btn-sm stop-timer" style="display:none;">Stop</button>
                         <span class="time-spent">Time: ${task.timeSpent || 0} min</span>
                         <button class="btn btn-danger btn-sm float-right delete">Delete</button>
+                        <button class="btn btn-info btn-sm float-right mr-1 edit">Edit</button>
                     </li>
                 `);
             }
@@ -144,12 +157,44 @@ $(document).ready(function() {
         chart.update();
     }
 
+    function formatTime(seconds) {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function startTimer(taskId) {
+        const task = tasks.find(t => t.id === taskId);
+        currentTask = task;
+        startTime = Date.now();
+        $('#focusTaskName').text(task.text);
+        $('body').addClass('focus-mode');
+        
+        timer = setInterval(() => {
+            const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+            $('#timerDisplay').text(formatTime(timeSpent));
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (currentTask && timer) {
+            clearInterval(timer);
+            const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+            currentTask.timeSpent = (currentTask.timeSpent || 0) + Math.floor(timeSpent / 60); // Convert to minutes
+            $('body').removeClass('focus-mode');
+            $('#timerDisplay').text('00:00:00');
+            renderTasks();
+            updateChart();
+        }
+    }
+
     $('#addTask').on('click', function() {
         const taskText = $('#taskInput').val();
         const taskCategory = $('#categoryInput').val() || 'General';
         const taskDeadline = $('#deadlineInput').val();
         if (taskText) {
-            const newTask = {id: Date.now(), text: taskText, category: taskCategory, completed: false, deadline: taskDeadline || null};
+            const newTask = {id: Date.now(), text: taskText, category: taskCategory, completed: false, deadline: taskDeadline || null, timeSpent: 0};
             tasks.push(newTask);
             categories.add(taskCategory);
             renderTasks();
@@ -162,38 +207,44 @@ $(document).ready(function() {
         updateChart();
     });
 
-    $('#taskList').on('click', '.start-timer', function() {
-        let id = $(this).parent().data('id');
-        currentTask = tasks.find(t => t.id === id);
-        $(this).hide();
-        $(this).siblings('.stop-timer').show();
-        if (!timer) {
-            timer = setInterval(() => {
-                if (currentTask) {
-                    currentTask.timeSpent = (currentTask.timeSpent || 0) + 1;
-                    renderTasks();
-                    updateChart();
-                }
-            }, 60000); // Update every minute
-        }
+    $('#taskList').on('click', '.start-timer', function(event) {
+        event.stopPropagation();
+        const taskId = $(this).closest('li').data('id');
+        startTimer(taskId);
     });
 
-    $('#taskList').on('click', '.stop-timer', function() {
-        $(this).hide();
-        $(this).siblings('.start-timer').show();
-        currentTask = null;
+    $('#taskList').on('click', '.stop-timer', function(event) {
+        event.stopPropagation();
+        stopTimer();
     });
 
-    $('#toggleFocus').on('click', function() {
-        $('body').toggleClass('focus-mode');
-        if ($('body').hasClass('focus-mode')) {
-            $(this).text('Exit Focus Mode');
+    $('#taskList').on('click', '.task-item', function(e) {
+        const id = $(this).data('id');
+        const task = tasks.find(t => t.id === id);
+        if (e.target.className.includes('delete')) {
+            tasks = tasks.filter(t => t.id !== id);
+            renderTasks();
+            updateCalendar();
+            updateChart();
+        } else if (e.target.className.includes('edit')) {
+            let newText = prompt("Edit task:", task.text);
+            if (newText !== null) {
+                task.text = newText;
+                renderTasks();
+                updateCalendar();
+                updateChart();
+            }
         } else {
-            $(this).text('Toggle Focus Mode');
+            task.completed = !task.completed;
+            renderTasks();
         }
     });
 
-    // Existing event handlers for delete, edit, etc.
+    $('#stopFocus').on('click', stopTimer);
+
+    $(document).on('click', '.category-btn', function() {
+        renderTasks($(this).data('category'));
+    });
 
     // Initial render and update functions
     updateCategories();

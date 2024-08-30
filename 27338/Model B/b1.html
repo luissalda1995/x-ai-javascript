@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vehicle Maintenance Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css">
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #f4f4f4; }
+        .container { max-width: 800px; margin: 20px auto; padding: 20px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        #maintenanceForm, #maintenanceTimeline, #summary { margin: 20px 0; }
+        #maintenanceForm input, #maintenanceForm textarea { width: 100%; margin: 5px 0; padding: 8px; }
+        #maintenanceForm button { background: #5cb85c; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+        .timeline-item { padding: 10px; border-left: 3px solid #0275d8; margin: 10px 0; background: #e9ecef; }
+        .reminder { color: red; animation: pulse 2s infinite; }
+        .chart-container { width: 100%; height: 300px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Vehicle Maintenance Tracker</h2>
+    
+    <!-- Maintenance Form -->
+    <div id="maintenanceForm">
+        <input type="text" id="type" placeholder="Type of Maintenance">
+        <input type="text" id="date" placeholder="Date">
+        <input type="number" id="mileage" placeholder="Mileage">
+        <textarea id="notes" placeholder="Notes"></textarea>
+        <button onclick="addMaintenance()">Log Maintenance</button>
+    </div>
+
+    <!-- Maintenance Timeline -->
+    <div id="maintenanceTimeline"></div>
+
+    <!-- Summary Section -->
+    <div id="summary">
+        <h3>Maintenance Summary</h3>
+        <div class="chart-container">
+            <canvas id="maintenanceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    flatpickr("#date", {});
+
+    let maintenanceLogs = JSON.parse(localStorage.getItem('maintenanceLogs') || '[]');
+
+    function addMaintenance() {
+        const type = $('#type').val();
+        const date = $('#date').val();
+        const mileage = $('#mileage').val();
+        const notes = $('#notes').val();
+
+        if(type && date && mileage) {
+            maintenanceLogs.push({type, date, mileage, notes});
+            localStorage.setItem('maintenanceLogs', JSON.stringify(maintenanceLogs));
+            updateTimeline();
+            updateChart();
+            $('#maintenanceForm')[0].reset();
+        }
+    }
+
+    function updateTimeline() {
+        $('#maintenanceTimeline').html(maintenanceLogs.map((log, index) => `
+            <div class="timeline-item">
+                <strong>${log.type}</strong> - Mileage: ${log.mileage} - Date: ${log.date}
+                ${index < maintenanceLogs.length - 1 ? `<div class="reminder">Next maintenance in ${maintenanceLogs[index + 1].mileage - log.mileage} miles</div>` : ''}
+            </div>
+        `).join(''));
+    }
+
+    function updateChart() {
+        const ctx = document.getElementById('maintenanceChart').getContext('2d');
+        const types = [...new Set(maintenanceLogs.map(log => log.type))];
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: types,
+                datasets: [{
+                    label: 'Number of Maintenance Activities',
+                    data: types.map(type => maintenanceLogs.filter(log => log.type === type).length),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // Initial load
+    updateTimeline();
+    updateChart();
+</script>
+
+</body>
+</html>

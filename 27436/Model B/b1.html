@@ -1,106 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productivity App</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .task-list { list-style: none; padding: 0; }
-        .task-list li { padding: 10px; border-bottom: 1px solid #eee; }
-        .task-list li:last-child { border-bottom: none; }
-        .completed { text-decoration: line-through; color: grey; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Manager</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
+<style>
+  body { font-family: 'Roboto', sans-serif; background-color: #f4f4f4; }
+  #taskForm { background: #fff; padding: 20px; margin: 20px; }
+  #taskList { list-style: none; padding: 0; }
+  #taskList li { padding: 15px; border-bottom: 1px solid #eee; }
+  #taskList li:last-child { border-bottom: none; }
+  .completed { text-decoration: line-through; }
+  .chart-container { width: 80%; margin: 40px auto; }
+</style>
 </head>
 <body>
-    <h1>Productivity App</h1>
-    <form id="taskForm">
-        <input type="text" id="taskInput" placeholder="Enter new task">
-        <select id="categorySelect">
-            <option value="Work">Work</option>
-            <option value="Home">Home</option>
-            <option value="Personal">Personal</option>
-        </select>
-        <button type="submit">Add Task</button>
-    </form>
-    <div id="taskDisplay"></div>
+<div id="app">
+  <form id="taskForm">
+    <input type="text" id="taskName" placeholder="Task name">
+    <select id="taskCategory">
+      <option value="Work">Work</option>
+      <option value="Personal">Personal</option>
+    </select>
+    <button type="submit">Add Task</button>
+  </form>
+  <ul id="taskList"></ul>
+  <div class="chart-container">
+    <canvas id="productivityChart"></canvas>
+  </div>
+</div>
 
-    <script>
-        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let tasks = [];
+  let productivityChart;
 
-        function setup() {
-            noCanvas();
-            displayTasks();
-            const form = document.getElementById('taskForm');
-            form.onsubmit = addTask;
+  function setup() {
+    createCanvas(0, 0); // Initialize p5.js without a canvas
+    const ctx = document.getElementById('productivityChart').getContext('2d');
+    productivityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Tasks Completed',
+          data: [],
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: { beginAtZero: true }
         }
+      }
+    });
 
-        function addTask(event) {
-            event.preventDefault();
-            const input = document.getElementById('taskInput');
-            const categorySelect = document.getElementById('categorySelect');
-            const task = {
-                text: input.value,
-                category: categorySelect.value,
-                completed: false
-            };
-            tasks.push(task);
-            saveAndDisplayTasks();
-            input.value = '';
-        }
+    document.getElementById('taskForm').addEventListener('submit', addTask);
+  }
 
-        function saveAndDisplayTasks() {
-            localStorage.setItem('tasks', JSON.stringify(tasks));
-            displayTasks();
-        }
+  function addTask(e) {
+    e.preventDefault();
+    const taskName = document.getElementById('taskName').value;
+    const taskCategory = document.getElementById('taskCategory').value;
+    const newTask = { name: taskName, category: taskCategory, completed: false, timeSpent: 0 };
+    tasks.push(newTask);
+    updateTaskList();
+    document.getElementById('taskName').value = '';
+  }
 
-        function displayTasks() {
-            const taskDisplay = document.getElementById('taskDisplay');
-            taskDisplay.innerHTML = '';
-            const categories = [...new Set(tasks.map(task => task.category))];
-            categories.forEach(category => {
-                const categoryHeader = document.createElement('h2');
-                categoryHeader.textContent = category;
-                taskDisplay.appendChild(categoryHeader);
+  function updateTaskList() {
+    const taskListElement = document.getElementById('taskList');
+    taskListElement.innerHTML = '';
+    tasks.forEach((task, index) => {
+      const taskHTML = `<li class="${task.completed ? 'completed' : ''}">
+                          ${task.name} - ${task.category} <button onclick="editTask(${index})">Edit</button>
+                          <button onclick="deleteTask(${index})">Delete</button>
+                          <input type="checkbox" onchange="markCompleted(${index}, this.checked)">Completed
+                        </li>`;
+      taskListElement.innerHTML += taskHTML;
+    });
+    updateChart();
+  }
 
-                const taskList = document.createElement('ul');
-                taskList.className = 'task-list';
-                tasks.filter(task => task.category === category).forEach((task, index) => {
-                    const taskItem = document.createElement('li');
-                    taskItem.textContent = task.text;
-                    if (task.completed) taskItem.className = 'completed';
+  function editTask(index) {
+    const newName = prompt('Edit task:', tasks[index].name);
+    if (newName !== null) {
+      tasks[index].name = newName;
+      updateTaskList();
+    }
+  }
 
-                    const actionButtons = document.createElement('span');
-                    actionButtons.innerHTML = `
-                        <button onclick="editTask(${index})">Edit</button>
-                        <button onclick="deleteTask(${index})">Delete</button>
-                        <button onclick="toggleCompleted(${index})">Complete</button>
-                    `;
-                    taskItem.appendChild(actionButtons);
-                    taskList.appendChild(taskItem);
-                });
-                taskDisplay.appendChild(taskList);
-            });
-        }
+  function deleteTask(index) {
+    tasks.splice(index, 1);
+    updateTaskList();
+  }
 
-        function editTask(index) {
-            const newText = prompt('Edit task:', tasks[index].text);
-            if (newText !== null) {
-                tasks[index].text = newText;
-                saveAndDisplayTasks();
-            }
-        }
+  function markCompleted(index, isCompleted) {
+    tasks[index].completed = isCompleted;
+    updateTaskList();
+  }
 
-        function deleteTask(index) {
-            tasks.splice(index, 1);
-            saveAndDisplayTasks();
-        }
-
-        function toggleCompleted(index) {
-            tasks[index].completed = !tasks[index].completed;
-            saveAndDisplayTasks();
-        }
-    </script>
+  function updateChart() {
+    const labels = tasks.map(task => task.name);
+    const completedTasks = tasks.filter(task => task.completed).length;
+    productivityChart.data.labels = labels;
+    productivityChart.data.datasets[0].data = tasks.map(() => completedTasks);
+    productivityChart.update();
+  }
+</script>
 </body>
 </html>

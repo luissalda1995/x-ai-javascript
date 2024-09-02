@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Pet</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f3f3f3;
+        }
+        .pet-container {
+            text-align: center;
+            width: 300px;
+            border: 2px solid #000;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+        .pet {
+            font-size: 48px;
+        }
+        .pet-image {
+            width: 150px;
+            transition: transform 0.5s;
+            margin: auto;
+        }
+        .stats {
+            margin-bottom: 20px;
+        }
+        .stat-bar {
+            width: 100%;
+            background-color: #ddd;
+            margin: 5px 0;
+        }
+        .stat-bar div {
+            height: 20px;
+            transition: width 0.5s;
+        }
+        .health { background-color: #4CAF50; }
+        .happiness { background-color: #2196F3; }
+        .hunger { background-color: #FF9800; }
+        button {
+            margin: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+        @keyframes content-change {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-content {
+            animation: content-change 2s;
+        }
+    </style>
+</head>
+<body>
+
+<div class="pet-container">
+    <h2>My Virtual Pet</h2>
+    <div class="pet" id="pet">
+        🐱
+        <div id="petImage" class="pet-image"></div>
+    </div>
+    <div class="stats">
+        <div class="stat-bar">Health:<div id="health" class="health" style="width:100%;"></div></div>
+        <div class="stat-bar">Happiness:<div id="happiness" class="happiness" style="width:100%;"></div></div>
+        <div class="stat-bar">Hunger:<div id="hunger" class="hunger" style="width:0%;"></div></div>
+    </div>
+    <div>
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="care()">Care</button>
+    </div>
+</div>
+
+<script>
+    let pet = {
+        health: 100,
+        happiness: 100,
+        hunger: 0
+    };
+
+    // Ensure values are between 0 and 100
+    function checkValues(value) {
+        if(value < 0) {
+            return 0;
+        } else if(value > 100) {
+            return 100;
+        } else {
+            return value;
+        }
+    }
+
+    function updatePet() {
+        pet.health = checkValues(pet.health);
+        pet.happiness = checkValues(pet.happiness);
+        pet.hunger = checkValues(pet.hunger);
+        document.getElementById('health').style.width = pet.health + '%';
+        document.getElementById('happiness').style.width = pet.happiness + '%';
+        document.getElementById('hunger').style.width = pet.hunger + '%';
+
+        let imageSrc = '🤨';
+        if (pet.happiness > 80 && pet.health > 80) imageSrc = '😁';
+        else if (pet.health < 30 || pet.happiness < 30) imageSrc = '😭';
+        if (pet.hunger > 70) imageSrc = '🍔';
+
+        const petImage = document.getElementById('petImage');
+        petImage.innerHTML = imageSrc;
+        petImage.classList.toggle('animate-content');
+    }
+
+    function feed() {
+        pet.hunger -= 20;
+        if (pet.hunger < 0) pet.hunger = 0;
+        pet.health += 10;
+        if (pet.health > 100) pet.health = 100;
+        updatePet();
+    }
+
+    function play() {
+        pet.happiness += 20;
+        pet.hunger += 10;
+        pet.health -= 5;
+        updatePet();
+    }
+
+    function care() {
+        pet.health += 15;
+        pet.happiness += 10;
+        updatePet();
+    }
+
+    // Decrease hunger and happiness over time
+    setInterval(() => {
+        pet.hunger += 5;
+        pet.happiness -= 3;
+        pet.health -= 1;
+        updatePet();
+    }, 5000);
+
+    updatePet();
+</script>
+
+</body>
+</html>

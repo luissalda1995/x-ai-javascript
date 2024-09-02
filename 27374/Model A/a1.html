@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Pet</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f3f3f3;
+  }
+  .pet-container {
+    text-align: center;
+  }
+  .pet {
+    font-size: 48px;
+  }
+  .stats {
+    margin-bottom: 20px;
+  }
+  button {
+    margin: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+  }
+  .happy { color: green; }
+  .sad { color: blue; }
+  .hungry { color: red; }
+  @keyframes happyHop {
+    50% { transform: translateY(-10px); }
+  }
+  .animate.happy {
+    animation: happyHop 0.6s infinite;
+  }
+</style>
+</head>
+<body>
+<div class="pet-container">
+  <div class="stats">
+    <span>Health: <span id="health">100</span></span> |
+    <span>Happiness: <span id="happiness">50</span></span> |
+    <span>Hunger: <span id="hunger">50</span></span>
+  </div>
+  <div class="pet" id="pet">🐱</div>
+  <button onclick="feed()">Feed</button>
+  <button onclick="play()">Play</button>
+  <button onclick="care()">Care</button>
+</div>
+
+<script>
+  let health = 100;
+  let happiness = 50;
+  let hunger = 50;
+  
+  function updateDisplay() {
+    $('#health').text(health);
+    $('#happiness').text(happiness);
+    $('#hunger').text(hunger);
+    const pet = $('#pet');
+    pet.removeClass('happy sad hungry');
+    if(happiness > 70) pet.addClass('happy');
+    if(happiness < 30) pet.addClass('sad');
+    if(hunger > 70) pet.addClass('hungry');
+    if(pet.hasClass('happy')) pet.addClass('animate');
+  }
+
+  function feed() {
+    hunger -= 10;
+    health += 5;
+    updateDisplay();
+  }
+
+  function play() {
+    happiness += 15;
+    hunger += 5;
+    updateDisplay();
+  }
+
+  function care() {
+    health += 10;
+    happiness += 5;
+    updateDisplay();
+  }
+
+  updateDisplay();
+</script>
+</body>
+</html>

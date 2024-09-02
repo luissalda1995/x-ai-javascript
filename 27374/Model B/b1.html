@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtual Pet</title>
+    <style>
+        #petWidget {
+            width: 300px;
+            border: 2px solid #000;
+            padding: 20px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #petImage {
+            width: 150px;
+            transition: transform 0.5s;
+        }
+        .statBar {
+            width: 100%;
+            background-color: #ddd;
+            margin: 5px 0;
+        }
+        .statBar div {
+            height: 20px;
+            transition: width 0.5s;
+        }
+        .happy { background-color: #4CAF50; }
+        .sad { background-color: #f44336; }
+        .hungry { background-color: #FF9800; }
+        button {
+            margin: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .animate-bounce {
+            animation: bounce 0.6s;
+        }
+    </style>
+</head>
+<body>
+
+<div id="petWidget">
+    <h2>My Virtual Pet</h2>
+    <img id="petImage" src="pet_normal.png" alt="Virtual Pet">
+    <div class="stats">
+        <div class="statBar"><div id="health" class="happy" style="width:100%;"></div></div>
+        <div class="statBar"><div id="happiness" class="happy" style="width:100%;"></div></div>
+        <div class="statBar"><div id="hunger" class="hungry" style="width:0%;"></div></div>
+    </div>
+    <div>
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="care()">Care</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    let pet = {
+        health: 100,
+        happiness: 100,
+        hunger: 0
+    };
+
+    function updatePet() {
+        $('#health').css('width', pet.health + '%');
+        $('#happiness').css('width', pet.happiness + '%');
+        $('#hunger').css('width', pet.hunger + '%');
+
+        let imageSrc = 'pet_normal.png';
+        if (pet.happiness > 80 && pet.health > 80) imageSrc = 'pet_happy.png';
+        else if (pet.health < 30 || pet.happiness < 30) imageSrc = 'pet_sad.png';
+        if (pet.hunger > 70) imageSrc = 'pet_hungry.png';
+
+        $('#petImage').attr('src', imageSrc).toggleClass('animate-bounce', pet.happiness > 80);
+    }
+
+    function feed() {
+        pet.hunger -= 20;
+        if (pet.hunger < 0) pet.hunger = 0;
+        pet.health += 10;
+        if (pet.health > 100) pet.health = 100;
+        updatePet();
+    }
+
+    function play() {
+        pet.happiness += 20;
+        pet.hunger += 10;
+        pet.health -= 5;
+        updatePet();
+    }
+
+    function care() {
+        pet.health += 15;
+        pet.happiness += 10;
+        updatePet();
+    }
+
+    // Decrease hunger and happiness over time
+    setInterval(() => {
+        pet.hunger += 5;
+        pet.happiness -= 3;
+        pet.health -= 1;
+        updatePet();
+    }, 5000);
+
+    updatePet();
+</script>
+
+</body>
+</html>

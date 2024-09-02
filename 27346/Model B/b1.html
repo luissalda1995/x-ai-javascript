@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rain Dodger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Press+Start+2P&display=swap">
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<style>
+  body { font-family: 'Press Start 2P', cursive; background-color: #f0f0f0; text-align: center; }
+  #game-container { width: 400px; height: 600px; background-color: #fff; border: 1px solid #ddd; margin: 20px auto; overflow: hidden; position: relative; }
+  #player { width: 50px; height: 50px; background-color: #007BFF; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+  .rain { position: absolute; width: 10px; height: 20px; background-color: #00CED1; top: -20px; }
+  #score-display, #game-over, #buttons { margin: 10px; }
+  #game-over { display: none; color: red; }
+  button { font-family: 'Press Start 2P', cursive; padding: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="player"></div>
+  <div id="score-display">Score: 0</div>
+  <div id="game-over">Game Over! Your score is: <span id="final-score"></span></div>
+  <div id="buttons">
+    <button id="play-button">Play</button>
+    <button id="restart-button" style="display: none;">Restart</button>
+  </div>
+</div>
+<script>
+$(document).ready(function() {
+  const gameContainer = $("#game-container");
+  const player = $("#player");
+  const scoreDisplay = $("#score-display");
+  const gameOverDisplay = $("#game-over");
+  const finalScoreDisplay = $("#final-score");
+  const playButton = $("#play-button");
+  const restartButton = $("#restart-button");
+  let score = 0;
+  let gameRunning = false;
+  let rainSpeed = 3;
+  let rainInterval = 800;
+
+  function createRain() {
+    const rain = $("<div class='rain'></div>");
+    rain.css('left', Math.random() * (gameContainer.width() - 10));
+    gameContainer.append(rain);
+    animateRain(rain);
+  }
+
+  function animateRain(rain) {
+    rain.animate({ top: "+=" + gameContainer.height() }, {
+      duration: rainSpeed * 1000,
+      easing: "linear",
+      step: function(now, fx) {
+        if (fx.prop === 'top' && now > gameContainer.height() - 50) {
+          checkCollision(rain);
+        }
+      },
+      complete: function() {
+        rain.remove();
+      }
+    });
+  }
+
+  function checkCollision(rain) {
+    const playerLeft = player.position().left;
+    const playerRight = playerLeft + player.width();
+    const rainLeft = rain.position().left;
+    const rainRight = rainLeft + rain.width();
+    if ((rainLeft < playerRight && rainRight > playerLeft) && rain.position().top + rain.height() > player.position().top) {
+      endGame();
+    }
+  }
+
+  function endGame() {
+    gameRunning = false;
+    finalScoreDisplay.text(score);
+    gameOverDisplay.show();
+    restartButton.show();
+    playButton.hide();
+  }
+
+  function updateScore() {
+    score += 1;
+    scoreDisplay.text(`Score: ${score}`);
+  }
+
+  function gameLoop() {
+    if (gameRunning) {
+      createRain();
+      updateScore();
+      setTimeout(gameLoop, rainInterval);
+      if (rainSpeed > 0.5) rainSpeed -= 0.01;
+      if (rainInterval > 100) rainInterval -= 10;
+    }
+  }
+
+  $(document).keydown(function(e) {
+    if (gameRunning) {
+      const left = 37, right = 39;
+      const currentLeft = player.position().left;
+      if (e.which === left && currentLeft > 0) {
+        player.css('left', currentLeft - 10);
+      } else if (e.which === right && currentLeft < gameContainer.width() - player.width()) {
+        player.css('left', currentLeft + 10);
+      }
+    }
+  });
+
+  playButton.click(function() {
+    if (!gameRunning) {
+      gameRunning = true;
+      gameLoop();
+      playButton.hide();
+      restartButton.show();
+    }
+  });
+
+  restartButton.click(function() {
+    location.reload();
+  });
+
+});
+</script>
+</body>
+</html>

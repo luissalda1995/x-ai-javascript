@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Drop Dodger</title>
+<style>
+    body { font-family: 'Arial', sans-serif; background: #f0f0f0; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #gameArea { background: #87CEEB; border: 2px solid #000; position: relative; }
+    #player { width: 50px; height: 20px; background: #FF6347; position: absolute; bottom: 10px; }
+    .drop { width: 10px; height: 20px; background: #4682B4; position: absolute; }
+    #controls { text-align: center; margin-top: 10px; }
+    button { padding: 10px 20px; font-size: 16px; margin: 0 10px; cursor: pointer; }
+    #score { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 5px; }
+</style>
+</head>
+<body>
+<div id="gameArea" width="400" height="500"></div>
+<div id="controls">
+    <button id="playButton">Play</button>
+    <button id="restartButton" style="display:none;">Restart</button>
+</div>
+<div id="score">Score: <span id="scoreValue">0</span></div>
+
+<script>
+    const gameArea = document.getElementById('gameArea');
+    const playButton = document.getElementById('playButton');
+    const restartButton = document.getElementById('restartButton');
+    const scoreValue = document.getElementById('scoreValue');
+    let player, drops = [], score = 0, gameLoop, speed = 2, gameActive = false;
+
+    function initGame() {
+        player = { 
+            x: gameArea.offsetWidth / 2 - 25, 
+            element: document.createElement('div')
+        };
+        player.element.id = 'player';
+        gameArea.appendChild(player.element);
+        gameActive = true;
+        score = 0;
+        drops = [];
+        speed = 2;
+        playButton.style.display = 'none';
+        restartButton.style.display = 'none';
+        gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    function gameUpdate() {
+        if (!gameActive) return;
+        updatePlayer();
+        spawnDrop();
+        moveDrops();
+        checkCollisions();
+        updateScore();
+        gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    function updatePlayer() {
+        document.onkeydown = function(e) {
+            switch (e.keyCode) {
+                case 37: // left arrow
+                    player.x = Math.max(player.x - 10, 0);
+                    break;
+                case 39: // right arrow
+                    player.x = Math.min(player.x + 10, gameArea.offsetWidth - 50);
+                    break;
+            }
+            player.element.style.left = player.x + 'px';
+        };
+    }
+
+    function spawnDrop() {
+        if (Math.random() < 0.02) {
+            const drop = document.createElement('div');
+            drop.className = 'drop';
+            drop.style.left = Math.random() * (gameArea.offsetWidth - 10) + 'px';
+            gameArea.appendChild(drop);
+            drops.push({element: drop, y: 0});
+        }
+    }
+
+    function moveDrops() {
+        drops.forEach(drop => {
+            drop.y += speed;
+            drop.element.style.top = drop.y + 'px';
+            if (drop.y > gameArea.offsetHeight) {
+                gameArea.removeChild(drop.element);
+                drops.shift();
+            }
+        });
+        speed += 0.001; // Increase difficulty over time
+    }
+
+    function checkCollisions() {
+        drops.forEach(drop => {
+            if (drop.y + 20 > gameArea.offsetHeight - 30 && 
+                drop.y < gameArea.offsetHeight - 10 &&
+                Math.abs(drop.element.offsetLeft - player.x) < 25) {
+                gameOver();
+            }
+        });
+    }
+
+    function gameOver() {
+        gameActive = false;
+        cancelAnimationFrame(gameLoop);
+        playButton.style.display = 'inline';
+        restartButton.style.display = 'inline';
+    }
+
+    function updateScore() {
+        score += 0.1;
+        scoreValue.textContent = Math.floor(score);
+    }
+
+    playButton.onclick = initGame;
+    restartButton.onclick = initGame;
+</script>
+</body>
+</html>

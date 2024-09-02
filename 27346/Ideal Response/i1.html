@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Drop Avoidance Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87ceeb, #f0f8ff);
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background-color: white;
+            border: 2px solid #000;
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            bottom: 10px;
+            left: 180px;
+            width: 40px;
+            height: 40px;
+            background-color: #ff6347;
+            border-radius: 50%;
+        }
+
+        .drop {
+            position: absolute;
+            top: 0;
+            width: 20px;
+            height: 20px;
+            background-color: #00f;
+            border-radius: 50%;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        button {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="game-container">
+        <div id="player"></div>
+        <div id="score">Score: 0</div>
+        <button id="start-btn">Play</button>
+        <button id="restart-btn" style="display:none;">Restart</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            let $player = $('#player');
+            let $gameContainer = $('.game-container');
+            let $startBtn = $('#start-btn');
+            let $restartBtn = $('#restart-btn');
+            let $scoreDisplay = $('#score');
+            let drops = [];
+            let score = 0;
+            let dropInterval;
+            let gameInterval;
+            let isPlaying = false;
+            let speed = 2;
+            let spawnInterval = 1000;
+
+            function startGame() {
+                isPlaying = true;
+                score = 0;
+                speed = 2;
+                spawnInterval = 1000;
+                drops = [];
+                $scoreDisplay.text("Score: 0");
+                $startBtn.hide();
+                $restartBtn.hide();
+
+                gameInterval = setInterval(updateGame, 20);
+                dropInterval = setInterval(createDrop, spawnInterval);
+            }
+
+            function restartGame() {
+                clearInterval(gameInterval);
+                clearInterval(dropInterval);
+                $('.drop').remove();
+                startGame();
+            }
+
+            function createDrop() {
+                let $drop = $('<div class="drop"></div>');
+                $drop.css('left', Math.random() * ($gameContainer.width() - 20) + 'px');
+                $gameContainer.append($drop);
+                drops.push($drop);
+
+                if (spawnInterval > 300) spawnInterval -= 10;
+                clearInterval(dropInterval);
+                dropInterval = setInterval(createDrop, spawnInterval);
+            }
+
+            function updateGame() {
+                score++;
+                $scoreDisplay.text(`Score: ${score}`);
+
+                for (let i = drops.length - 1; i >= 0; i--) {
+                    let $drop = drops[i];
+                    let dropTop = $drop.position().top;
+                    let dropLeft = $drop.position().left;
+
+                    if (dropTop + speed >= $gameContainer.height() - 50 &&
+                        dropLeft > $player.position().left - 20 &&
+                        dropLeft < $player.position().left + 40) {
+                        endGame();
+                        break;
+                    }
+
+                    $drop.css('top', dropTop + speed + 'px');
+
+                    if (dropTop > $gameContainer.height()) {
+                        $drop.remove();
+                        drops.splice(i, 1);
+                    }
+                }
+
+                speed += 0.002;  // gradually increase the speed of falling drops
+            }
+
+            function endGame() {
+                clearInterval(gameInterval);
+                clearInterval(dropInterval);
+                isPlaying = false;
+                $restartBtn.show();
+            }
+
+            $(document).keydown(function(e) {
+                if (!isPlaying) return;
+
+                let playerLeft = $player.position().left;
+
+                if (e.key === 'ArrowLeft' && playerLeft > 0) {
+                    $player.css('left', playerLeft - 10 + 'px');
+                } else if (e.key === 'ArrowRight' && playerLeft < $gameContainer.width() - 40) {
+                    $player.css('left', playerLeft + 10 + 'px');
+                }
+            });
+
+            $startBtn.click(startGame);
+            $restartBtn.click(restartGame);
+        });
+    </script>
+</body>
+</html>

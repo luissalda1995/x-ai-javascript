@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorcycle Comparison</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        body { font-family: 'Arial', sans-serif; }
+        .selection-dropdowns { margin: 20px; }
+        .compare-table { width: 100%; margin-top: 20px; }
+        .compare-table th, .compare-table td { text-align: center; }
+        .highlight-diff { background-color: #ffff99; }
+        .buy-button { margin-top: 20px; }
+        #purchaseAnimation { display: none; width: 100%; height: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row selection-dropdowns">
+            <div class="col-md-6">
+                <select class="form-control" id="motorcycle1">
+                    <option value="">Select Motorcycle 1</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-6">
+                <select class="form-control" id="motorcycle2">
+                    <option value="">Select Motorcycle 2</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+        </div>
+        <table class="table compare-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Motorcycle 1</th>
+                    <th>Motorcycle 2</th>
+                </tr>
+            </thead>
+            <tbody id="compareBody">
+                <!-- Table data will be populated here -->
+            </tbody>
+        </table>
+        <button class="btn btn-primary buy-button" id="buyButton">Buy Selected Motorcycle</button>
+        <div id="purchaseAnimation"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script>
+        const motorcycles = [
+            // Example data, should be replaced with actual data or API call
+            { name: "Motorcycle A", engine: 1000, hp: 150, torque: 100, weight: 200, price: 10000 },
+            { name: "Motorcycle B", engine: 1200, hp: 180, torque: 120, weight: 220, price: 12000 },
+            // Add more motorcycles here
+        ];
+
+        $(document).ready(function() {
+            // Populate dropdowns
+            $.each(motorcycles, function(i, bike) {
+                $("#motorcycle1, #motorcycle2").append($("<option>", {
+                    value: i,
+                    text: bike.name
+                }));
+            });
+
+            // Event listener for dropdown changes
+            $("#motorcycle1, #motorcycle2").change(compareMotorcycles);
+            $("#buyButton").click(buyMotorcycle);
+        });
+
+        function compareMotorcycles() {
+            const bike1 = motorcycles[$("#motorcycle1").val()];
+            const bike2 = motorcycles[$("#motorcycle2").val()];
+            const $compareBody = $("#compareBody");
+            $compareBody.empty();
+
+            const features = ["engine", "hp", "torque", "weight", "price"];
+            features.forEach(feature => {
+                const diff = bike1[feature] !== bike2[feature];
+                $compareBody.append(`
+                    <tr class="${diff ? 'highlight-diff' : ''}">
+                        <td>${feature.toUpperCase()}</td>
+                        <td>${bike1[feature]}</td>
+                        <td>${bike2[feature]}</td>
+                    </tr>
+                `);
+            });
+
+            const ctx = document.getElementById('purchaseAnimation').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [bike1.name, bike2.name],
+                    datasets: [{
+                        label: 'Horsepower',
+                        data: [bike1.hp, bike2.hp],
+                        backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)'],
+                        borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function buyMotorcycle() {
+            const selectedBike = $("#motorcycle1").val() || $("#motorcycle2").val();
+            if (selectedBike) {
+                anime({
+                    targets: '#purchaseAnimation',
+                    opacity: [0, 1],
+                    duration: 2000,
+                    easing: 'easeInOutSine',
+                    complete: function(anim) {
+                        setTimeout(function() {
+                            anime({
+                                targets: '#purchaseAnimation',
+                                opacity: [1, 0],
+                                duration: 1000,
+                                easing: 'easeInOutSine'
+                            });
+                        }, 2000);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

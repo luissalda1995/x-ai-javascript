@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorcycle Comparison Tool</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .comparison-table th, .comparison-table td {
+            text-align: center;
+        }
+        .buy-button {
+            margin-top: 10px;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2 class="text-center">Motorcycle Comparison</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <select id="motorcycle1" class="form-control"></select>
+        </div>
+        <div class="col-md-6">
+            <select id="motorcycle2" class="form-control"></select>
+        </div>
+    </div>
+    <table class="table table-bordered comparison-table mt-4">
+        <thead>
+            <tr><th>Feature</th><th>Motorcycle 1</th><th>Motorcycle 2</th></tr>
+        </thead>
+        <tbody id="comparisonBody"></tbody>
+    </table>
+    <div class="text-center buy-button">
+        <button id="buy1" class="btn btn-primary">Buy Motorcycle 1</button>
+        <button id="buy2" class="btn btn-primary">Buy Motorcycle 2</button>
+    </div>
+    <div class="chart-container">
+        <canvas id="specChart"></canvas>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4"></script>
+<script>
+    const motorcycles = [
+        {name: "Ducati Panigale V4", engine: 1103, hp: 214, torque: 124, weight: 198, price: 28495},
+        {name: "Yamaha YZF-R1", engine: 998, hp: 200, torque: 112.4, weight: 200, price: 17399},
+        // Add more motorcycles here
+    ];
+
+    const $motorcycle1 = $('#motorcycle1'), $motorcycle2 = $('#motorcycle2');
+    const $comparisonBody = $('#comparisonBody');
+    const ctx = document.getElementById('specChart').getContext('2d');
+
+    // Populate dropdowns
+    motorcycles.forEach(bike => {
+        $motorcycle1.append($('<option>', { value: bike.name, text: bike.name }));
+        $motorcycle2.append($('<option>', { value: bike.name, text: bike.name }));
+    });
+
+    function compareBikes() {
+        const bike1 = motorcycles.find(bike => bike.name === $motorcycle1.val());
+        const bike2 = motorcycles.find(bike => bike.name === $motorcycle2.val());
+
+        const specs = ['engine', 'hp', 'torque', 'weight', 'price'];
+        let html = '';
+        specs.forEach(spec => {
+            html += `<tr><td>${spec}</td><td>${bike1[spec]}</td><td>${bike2[spec]}</td></tr>`;
+        });
+        $comparisonBody.html(html);
+
+        // Chart update
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: specs,
+                datasets: [{
+                    label: bike1.name,
+                    data: specs.map(spec => bike1[spec]),
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)'
+                }, {
+                    label: bike2.name,
+                    data: specs.map(spec => bike2[spec]),
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)'
+                }]
+            },
+            options: { scales: { yAxes: [{ ticks: { beginAtZero: true } }] } }
+        });
+    }
+
+    $motorcycle1.on('change', compareBikes);
+    $motorcycle2.on('change', compareBikes);
+
+    $('#buy1, #buy2').on('click', function() {
+        const bikeNum = this.id === 'buy1' ? 1 : 2;
+        $(this).addClass('animate__animated animate__bounceOut');
+        setTimeout(() => {
+            alert('You bought Motorcycle ' + bikeNum + '!');
+            $(this).removeClass('animate__animated animate__bounceOut');
+        }, 1000);
+    });
+</script>
+
+</body>
+</html>

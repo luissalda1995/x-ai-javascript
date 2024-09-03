@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <style>
+        #canvas {
+            border: 1px solid black;
+        }
+        .tools, .palette {
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero is-fullheight">
+        <div class="hero-body">
+            <div class="container">
+                <canvas id="canvas" width="800" height="600"></canvas>
+                <div class="tools">
+                    <button class="button" id="brush">Brush</button>
+                    <button class="button" id="eraser">Eraser</button>
+                    <button class="button" id="undo">Undo</button>
+                    <button class="button" id="redo">Redo</button>
+                    <label>Size: <input type="range" id="size" min="1" max="50" value="10"></label>
+                    <label>Opacity: <input type="range" id="opacity" min="0" max="1" step="0.1" value="1"></label>
+                </div>
+                <div class="palette">
+                    <input type="color" id="colorPicker" value="#000000">
+                </div>
+                <button class="button" id="save">Save Artwork</button>
+                <div id="gallery">
+                    <!-- Gallery items will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.1/fabric.min.js"></script>
+    <script>
+        const canvas = new fabric.Canvas('canvas', {
+            isDrawingMode: true
+        });
+
+        document.getElementById('brush').addEventListener('click', () => {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.color = document.getElementById('colorPicker').value;
+            canvas.freeDrawingBrush.width = parseInt(document.getElementById('size').value, 10);
+            canvas.freeDrawingBrush.opacity = parseFloat(document.getElementById('opacity').value);
+        });
+
+        document.getElementById('eraser').addEventListener('click', () => {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.color = 'white'; // Assuming background is white
+        });
+
+        document.getElementById('undo').addEventListener('click', () => {
+            if (canvas._objects.length > 0) {
+                canvas._objects.pop().remove();
+                canvas.renderAll();
+            }
+        });
+
+        document.getElementById('redo').addEventListener('click', () => {
+            // Redo logic would require keeping track of all canvas states or actions, not directly supported by Fabric.js
+        });
+
+        document.getElementById('save').addEventListener('click', () => {
+            const dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1
+            });
+            // Here you would ideally save this dataURL to a server or local storage
+            // For simplicity, let's just alert the image data
+            alert('Artwork would be saved here.');
+        });
+
+        // Initialize color and brush settings
+        canvas.freeDrawingBrush.color = document.getElementById('colorPicker').value;
+        canvas.freeDrawingBrush.width = parseInt(document.getElementById('size').value, 10);
+        canvas.freeDrawingBrush.opacity = parseFloat(document.getElementById('opacity').value);
+    </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Paint Widget</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<style>
+    #canvas-container { 
+        border: 2px solid #000; 
+        margin: 20px;
+    }
+    #controls {
+        padding: 20px;
+        background: #f8f9fa;
+    }
+    .gallery-item {
+        cursor: pointer;
+        margin: 10px;
+        border: 1px solid #ddd;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div id="canvas-container">
+        <canvas id="paintCanvas" width="800" height="500"></canvas>
+    </div>
+    <div id="controls" class="row">
+        <div class="col">
+            <select id="brushType">
+                <option value="round">Round Brush</option>
+                <option value="square">Square Brush</option>
+            </select>
+            <input type="range" id="brushSize" min="1" max="50" value="5">
+            <input type="range" id="brushOpacity" min="0" max="100" value="100">
+            <input type="color" id="colorPicker" value="#000000">
+            <button id="eraser">Eraser</button>
+            <button id="undo">Undo</button>
+            <button id="redo">Redo</button>
+            <button id="new">New</button>
+            <button id="save">Save</button>
+        </div>
+    </div>
+    <div id="gallery" class="row"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+$(function() {
+    const canvas = document.getElementById('paintCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let history = [], currentState = -1;
+
+    // Drawing settings
+    let brush = {
+        type: 'round',
+        size: 5,
+        color: '#000000',
+        opacity: 1
+    };
+
+    // Update brush settings
+    $('#brushType, #brushSize, #brushOpacity, #colorPicker').on('change', function() {
+        brush.type = $('#brushType').val();
+        brush.size = $('#brushSize').val();
+        brush.opacity = $('#brushOpacity').val() / 100;
+        brush.color = $('#colorPicker').val();
+    });
+
+    // Drawing function
+    function draw(e) {
+        if (!isDrawing) return;
+        ctx.globalAlpha = brush.opacity;
+        ctx.strokeStyle = brush.color;
+        ctx.lineWidth = brush.size;
+        ctx.lineCap = brush.type === 'round' ? 'round' : 'butt';
+        ctx.lineJoin = 'round';
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+    }
+
+    // Event listeners for drawing
+    canvas.addEventListener('mousedown', (e) => { isDrawing = true; ctx.beginPath(); draw(e); });
+    canvas.addEventListener('mousemove', draw);
+    document.addEventListener('mouseup', () => {
+        if (isDrawing) {
+            isDrawing = false;
+            history.push(canvas.toDataURL());
+            currentState++;
+        }
+    });
+
+    // Eraser functionality
+    $('#eraser').click(() => {
+        brush.color = '#FFFFFF'; // Assuming white background
+    });
+
+    // Undo/Redo
+    $('#undo').click(() => {
+        if (currentState > 0) {
+            currentState--;
+            let img = new Image();
+            img.src = history[currentState];
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }
+        }
+    });
+
+    $('#redo').click(() => {
+        if (currentState < history.length - 1) {
+            currentState++;
+            let img = new Image();
+            img.src = history[currentState];
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); }
+        }
+    });
+
+    // New canvas
+    $('#new').click(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        history = [];
+        currentState = -1;
+    });
+
+    // Save functionality (simplified)
+    $('#save').click(() => {
+        const dataURL = canvas.toDataURL();
+        // Here you would typically send this dataURL to a server or save to localStorage
+        alert('Painting saved!'); // Placeholder for actual save functionality
+    });
+
+    // Gallery (placeholder for dynamic content)
+    // You would need to implement load functionality to populate this from saved artworks
+    $('#gallery').html('<p>Gallery items would appear here.</p>');
+});
+</script>
+</body>
+</html>

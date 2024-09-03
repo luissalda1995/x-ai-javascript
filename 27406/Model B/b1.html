@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projectile Motion Simulator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body class="bg-gray-100 h-screen flex justify-center items-center">
+    <div class="max-w-md w-full p-4 bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <h1 class="text-3xl mb-4 text-center">Projectile Motion Simulator</h1>
+        <form id="inputForm" class="mb-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="velocity">
+                    Initial Velocity (m/s)
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" id="velocity" type="number" placeholder="Velocity">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="angle">
+                    Launch Angle (degrees)
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight" id="angle" type="number" placeholder="Angle">
+            </div>
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" type="submit">
+                Launch!
+            </button>
+        </form>
+        <div id="graph" class="bg-gray-200 p-4 rounded shadow-inner"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('inputForm');
+        const graph = document.getElementById('graph');
+        const g = 9.81; // acceleration due to gravity
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const v = parseFloat(document.getElementById('velocity').value);
+            const angle = parseFloat(document.getElementById('angle').value) * Math.PI / 180; // convert to radians
+
+            const timeOfFlight = (2 * v * Math.sin(angle)) / g;
+            const maxHeight = Math.pow(v * Math.sin(angle), 2) / (2 * g);
+            const range = v * Math.cos(angle) * timeOfFlight;
+
+            const margin = {top: 10, right: 10, bottom: 30, left: 40},
+                width = 500 - margin.left - margin.right,
+                height = 300 - margin.top - margin.bottom;
+
+            d3.select(graph).selectAll("*").remove();
+
+            const xScale = d3.scaleLinear()
+                .domain([0, range])
+                .range([0, width]);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, maxHeight])
+                .range([height, 0]);
+
+            const line = d3.line()
+                .x((d, i) => xScale(i * range / 100))
+                .y(d => yScale(d));
+
+            const svg = d3.select(graph)
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            // Draw axes
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(xScale));
+
+            svg.append("g")
+                .call(d3.axisLeft(yScale));
+
+            const trajectory = d3.range(0, maxHeight, maxHeight / 100);
+            svg.append("path")
+                .datum(trajectory)
+                .attr("class", "line")
+                .attr("d", line)
+                .style("stroke", "steelblue")
+                .style("stroke-width", 2)
+                .style("fill", "none");
+
+            const projectile = svg.append("circle")
+                .attr("r", 5)
+                .attr("cx", xScale(0))
+                .attr("cy", yScale(0))
+                .style("fill", "red");
+
+            projectile.transition()
+                .duration(timeOfFlight * 1000)
+                .attrTween("transform", translateAlong(svg.select('path.line').node()))
+                .on("end", () => {
+                    projectile.attr("transform", `translate(${xScale(range)}, ${yScale(0)})`);
+                });
+
+            function translateAlong(path) {
+                const l = path.getTotalLength();
+                return function(d, i, a) {
+                    return function(t) {
+                        const p = path.getPointAtLength(t * l);
+                        return `translate(${p.x},${p.y})`;
+                    };
+                };
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,105 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Vehicle Maintenance Tracker</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css">
-    <style>
-        body { font-family: 'Arial', sans-serif; background: #f4f4f4; }
-        .container { max-width: 800px; margin: 20px auto; padding: 20px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        #maintenanceForm, #maintenanceTimeline, #summary { margin: 20px 0; }
-        #maintenanceForm input, #maintenanceForm textarea { width: 100%; margin: 5px 0; padding: 8px; }
-        #maintenanceForm button { background: #5cb85c; color: white; border: none; padding: 10px 20px; cursor: pointer; }
-        .timeline-item { padding: 10px; border-left: 3px solid #0275d8; margin: 10px 0; background: #e9ecef; }
-        .reminder { color: red; animation: pulse 2s infinite; }
-        .chart-container { width: 100%; height: 300px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fraction Pie Chart Game</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f4f4f4;
+    }
+    .container {
+        text-align: center;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .input-field {
+        margin: 10px;
+    }
+    button {
+        margin-top: 10px;
+    }
+    .charts {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+    }
+    .chart-container {
+        width: 100px;
+        margin: 20px;
+    }
+    .notification {
+        margin-top: 20px;
+        color: #fff;
+    }
+    .correct { background-color: #28a745; }
+    .incorrect { background-color: #dc3545; }
+</style>
 </head>
 <body>
-
 <div class="container">
-    <h2>Vehicle Maintenance Tracker</h2>
-    
-    <!-- Maintenance Form -->
-    <div id="maintenanceForm">
-        <input type="text" id="type" placeholder="Type of Maintenance">
-        <input type="text" id="date" placeholder="Date">
-        <input type="number" id="mileage" placeholder="Mileage">
-        <textarea id="notes" placeholder="Notes"></textarea>
-        <button onclick="addMaintenance()">Log Maintenance</button>
+    <h1>Fraction Pie Chart Game</h1>
+    <div class="input-field">
+        <label>Numerator:</label>
+        <input type="number" id="numerator" min="1" value="1">
     </div>
-
-    <!-- Maintenance Timeline -->
-    <div id="maintenanceTimeline"></div>
-
-    <!-- Summary Section -->
-    <div id="summary">
-        <h3>Maintenance Summary</h3>
-        <div class="chart-container">
-            <canvas id="maintenanceChart"></canvas>
-        </div>
+    <div class="input-field">
+        <label>Denominator:</label>
+        <input type="number" id="denominator" min="1" value="2">
     </div>
+    <button onclick="generateCharts()">Submit</button>
+    <div id="charts" class="charts"></div>
+    <div id="notification" class="notification"></div>
+    <p id="decimalEquivalent"></p>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-    flatpickr("#date", {});
+    let numerator, denominator;
+    const chartDiv = document.getElementById('charts');
+    const notificationDiv = document.getElementById('notification');
+    const decimalDiv = document.getElementById('decimalEquivalent');
 
-    let maintenanceLogs = JSON.parse(localStorage.getItem('maintenanceLogs') || '[]');
-
-    function addMaintenance() {
-        const type = $('#type').val();
-        const date = $('#date').val();
-        const mileage = $('#mileage').val();
-        const notes = $('#notes').val();
-
-        if(type && date && mileage) {
-            maintenanceLogs.push({type, date, mileage, notes});
-            localStorage.setItem('maintenanceLogs', JSON.stringify(maintenanceLogs));
-            updateTimeline();
-            updateChart();
-            $('#maintenanceForm')[0].reset();
+    function validateInput() {
+        numerator = parseInt(document.getElementById('numerator').value);
+        denominator = parseInt(document.getElementById('denominator').value);
+        if (isNaN(numerator) || isNaN(denominator) || numerator > denominator || numerator <= 0 || denominator <= 0) {
+            alert('Please enter valid numbers for numerator and denominator.');
+            return false;
         }
+        return true;
     }
 
-    function updateTimeline() {
-        $('#maintenanceTimeline').html(maintenanceLogs.map((log, index) => `
-            <div class="timeline-item">
-                <strong>${log.type}</strong> - Mileage: ${log.mileage} - Date: ${log.date}
-                ${index < maintenanceLogs.length - 1 ? `<div class="reminder">Next maintenance in ${maintenanceLogs[index + 1].mileage - log.mileage} miles</div>` : ''}
-            </div>
-        `).join(''));
-    }
+    function generateCharts() {
+        if (!validateInput()) return;
+        chartDiv.innerHTML = '';
+        const correctFraction = numerator / denominator;
+        const correctChartIndex = Math.floor(Math.random() * 4);
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#8BC34A'];
 
-    function updateChart() {
-        const ctx = document.getElementById('maintenanceChart').getContext('2d');
-        const types = [...new Set(maintenanceLogs.map(log => log.type))];
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: types,
-                datasets: [{
-                    label: 'Number of Maintenance Activities',
-                    data: types.map(type => maintenanceLogs.filter(log => log.type === type).length),
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: { beginAtZero: true }
+        for (let i = 0; i < 4; i++) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            const data = i === correctChartIndex ? correctFraction : Math.random();
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    datasets: [{
+                        data: [data, 1 - data],
+                        backgroundColor: [colors[i], 'rgba(200,200,200,0.2)'],
+                    }],
+                },
+                options: { 
+                    cutoutPercentage: 50,
+                    legend: { display: false },
+                    tooltips: { enabled: false }
                 }
-            }
-        });
+            });
+            const div = document.createElement('div');
+            div.className = 'chart-container';
+            div.appendChild(canvas);
+            div.onclick = () => checkAnswer(i === correctChartIndex);
+            chartDiv.appendChild(div);
+        }
+        decimalDiv.innerText = `Decimal equivalent: ${(numerator / denominator).toFixed(2)}`;
     }
 
-    // Initial load
-    updateTimeline();
-    updateChart();
+    function checkAnswer(isCorrect) {
+        notificationDiv.innerText = isCorrect ? 'Correct!' : 'Incorrect, try again!';
+        notificationDiv.className = isCorrect ? 'notification correct' : 'notification incorrect';
+    }
 </script>
-
 </body>
 </html>

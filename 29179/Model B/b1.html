@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Dashboard</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Arial', sans-serif; }
+        .dashboard { padding: 20px; }
+        .shipment-table { margin-bottom: 20px; }
+        .tracking-panel { 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            height: 300px; 
+            position: relative; 
+        }
+        .vehicle {
+            position: absolute;
+            transition: left 1s linear, top 1s linear;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container dashboard">
+    <h2>Shipment Dashboard</h2>
+    <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addShipmentModal">Add New Shipment</button>
+    
+    <!-- Shipments Table -->
+    <table class="table shipment-table">
+        <thead>
+            <tr><th>Origin</th><th>Destination</th><th>Vehicle</th><th>Distance</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="shipmentList">
+            <!-- Shipments will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <!-- Tracking Panel -->
+    <div class="tracking-panel" id="trackingPanel">
+        <!-- Vehicles will be placed here -->
+    </div>
+</div>
+
+<!-- Modal for adding new shipment -->
+<div class="modal fade" id="addShipmentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <!-- Modal content with form for shipment details -->
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    \$(document).ready(function() {
+        // Mock data
+        let shipments = [];
+        
+        // Function to add shipment
+        function addShipment(shipment) {
+            shipments.push(shipment);
+            updateDashboard();
+        }
+
+        // Function to update dashboard and tracking
+        function updateDashboard() {
+            <INLINE_MATH>('#shipmentList').html(shipments.map(s => `
+                <tr>
+                    <td></INLINE_MATH>{s.origin}</td>
+                    <td><INLINE_MATH>{s.destination}</td>
+                    <td><i class="fas fa-</INLINE_MATH>{s.vehicle === 'airplane' ? 'plane' : s.vehicle === 'car' ? 'car' : 'ship'}"></i></td>
+                    <td><INLINE_MATH>{s.distance} km</td>
+                    <td></INLINE_MATH>{s.status}</td>
+                    <td><button onclick="startTracking($ {s.id})">Track</button> <button onclick="cancelShipment( ${s.id})">Cancel</button></td>
+                </tr>`).join(''));
+            
+            // Update tracking panel
+            shipments.forEach(ship => {
+                if(ship.status === 'In Transit') {
+                    let vehicle = $ (`#vehicle- ${ship.id}`);
+                    if(vehicle.length === 0) {
+                        $ ('#trackingPanel').append(`<i id="vehicle- ${ship.id}" class="vehicle fas fa-\${ship.vehicle === 'airplane' ? 'plane' : ship.vehicle === 'car' ? 'car' : 'ship'}"></i>`);
+                        vehicle = $ (`#vehicle- ${ship.id}`);
+                    }
+                    // Here you would calculate position based on time and speed
+                    // For simplicity, let's say we move from left to right
+                    let progress = (Date.now() - ship.startTime) / (ship.distance / ship.speed * 3600000); // in hours
+                    if(progress < 1) {
+                        vehicle.css('left', `\${progress * 100}%`);
+                    } else {
+                        vehicle.remove();
+                        ship.status = 'Delivered';
+                    }
+                }
+            });
+        }
+
+        function startTracking(id) {
+            let ship = shipments.find(s => s.id === id);
+            if(ship) {
+                ship.status = 'In Transit';
+                ship.startTime = Date.now();
+                setInterval(updateDashboard, 1000); // Update every second
+            }
+        }
+
+        function cancelShipment(id) {
+            let index = shipments.findIndex(s => s.id === id);
+            if(index !== -1) {
+                shipments[index].status = 'Canceled';
+                $ (`#vehicle- ${id}`).remove();
+                updateDashboard();
+            }
+        }
+
+        // Modal setup and validation would go here along with form submission handling
+    });
+</script>
+</body>
+</html>

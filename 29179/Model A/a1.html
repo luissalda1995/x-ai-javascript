@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+        .dashboard { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f8f8; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
+        .start { background-color: #4CAF50; color: white; }
+        .cancel { background-color: #f44336; color: white; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 50%; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .tracking-panel { margin-top: 20px; border-top: 2px solid #ccc; padding-top: 20px; }
+        .vehicle { font-size: 24px; }
+        .vehicle.boat { color: blue; }
+        .vehicle.car { color: grey; }
+        .vehicle.airplane { color: skyblue; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <button id="newShipmentBtn" class="btn" style="background-color: #008CBA; color: white;">New Shipment</button>
+    <table id="shipmentTable">
+        <thead>
+            <tr>
+                <th>Origin</th>
+                <th>Destination</th>
+                <th>Vehicle</th>
+                <th>Distance (km)</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div class="tracking-panel" id="trackingPanel">
+        <h3>Real-Time Tracking</h3>
+        <!-- Tracking will be dynamically added here -->
+    </div>
+</div>
+
+<div id="shipmentModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>New Shipment</h2>
+        <form id="shipmentForm">
+            <input type="text" id="origin" placeholder="Origin" required>
+            <input type="text" id="destination" placeholder="Destination" required>
+            <select id="vehicleType" required>
+                <option value="">Select Vehicle</option>
+                <option value="boat">Boat</option>
+                <option value="car">Car</option>
+                <option value="airplane">Airplane</option>
+            </select>
+            <input type="number" id="distance" placeholder="Distance in km" min="1" required>
+            <button type="submit" class="btn" style="background-color: #4CAF50; color: white;">Create Shipment</button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+<INLINE_MATH>(document).ready(function() {
+    const shipments = [];
+    const speeds = { boat: 50, car: 80, airplane: 300 };
+    let trackingInterval;
+
+    function addShipmentToTable(shipment) {
+        const row = `<tr data-id="</INLINE_MATH>{shipment.id}">
+            <td><INLINE_MATH>{shipment.origin}</td>
+            <td></INLINE_MATH>{shipment.destination}</td>
+            <td><i class="fas fa-\${shipment.vehicle === 'boat' ? 'ship' : shipment.vehicle === 'car' ? 'car' : 'plane'}"></i> <INLINE_MATH>{shipment.vehicle}</td>
+            <td></INLINE_MATH>{shipment.distance}</td>
+            <td>\${shipment.status}</td>
+            <td><button class="start">Start</button> <button class="cancel">Cancel</button></td>
+        </tr>`;
+        \$('#shipmentTable tbody').append(row);
+    }
+
+    function updateTrackingPanel(shipment) {
+        const panel = <INLINE_MATH>('#trackingPanel');
+        let tracking = panel.find(`#track-</INLINE_MATH>{shipment.id}`);
+        if (!tracking.length) {
+            tracking = $ (`<div id="track- ${shipment.id}"><h4>\${shipment.origin} to \${shipment.destination}</h4><div class="vehicle $ {shipment.vehicle}"><i class="fas fa- ${shipment.vehicle === 'boat' ? 'ship' : shipment.vehicle === 'car' ? 'car' : 'plane'}"></i></div><p>Progress: <span class="progress">0%</span></p></div>`);
+            panel.append(tracking);
+        }
+        const progress = ((shipment.distance - shipment.remainingDistance) / shipment.distance * 100).toFixed(2);
+        tracking.find('.progress').text(`\${progress}%`);
+        if (progress >= 100) {
+            shipment.status = 'Delivered';
+            $ (`tr[data-id=" ${shipment.id}"]`).find('td:nth-child(5)').text('Delivered');
+            tracking.remove();
+            clearInterval(trackingInterval);
+        }
+    }
+
+    \$('#newShipmentBtn').on('click', function() {
+        \$('#shipmentModal').css('display', 'block');
+    });
+
+    \$('.close').on('click', function() {
+        \$('#shipmentModal').css('display', 'none');
+    });
+
+    \$('#shipmentForm').on('submit', function(e) {
+        e.preventDefault();
+        const origin = \$('#origin').val();
+        const destination = \$('#destination').val();
+        const vehicle = <INLINE_MATH>('#vehicleType').val();
+        const distance = parseFloat(</INLINE_MATH>('#distance').val());
+        
+        if (!origin || !destination || !vehicle || !distance) {
+            alert('Please fill all fields correctly.');
+            return;
+        }
+
+        const shipment = {
+            id: Date.now(),
+            origin, 
+            destination, 
+            vehicle, 
+            distance, 
+            remainingDistance: distance, 
+            status: 'Pending'
+        };
+        shipments.push(shipment);
+        addShipmentToTable(shipment);
+        \$('#shipmentModal').css('display', 'none');
+        \$('#shipmentForm')[0].reset();
+    });
+
+    \$('#shipmentTable').on('click', '.start', function() {
+        const row = \$(this).closest('tr');
+        const id = row.data('id');
+        const shipment = shipments.find(s => s.id === id);
+        if (shipment.status === 'Pending' || shipment.status === 'In Transit') {
+            shipment.status = 'In Transit';
+            row.find('td:nth-child(5)').text('In Transit');
+            trackingInterval = setInterval(() => {
+                shipment.remainingDistance -= speeds[shipment.vehicle] / 3600; // km per second
+                if (shipment.remainingDistance <= 0) {
+                    shipment.remainingDistance = 0;
+                }
+                updateTrackingPanel(shipment);
+            }, 1000);
+        }
+    });
+
+    \$('#shipmentTable').on('click', '.cancel', function() {
+        const row = \$(this).closest('tr');
+        const id = row.data('id');
+        const shipment = shipments.find(s => s.id === id);
+        shipment.status = 'Canceled';
+        row.find('td:nth-child(5)').text('Canceled');
+        $ (`#track- ${id}`).remove();
+        clearInterval(trackingInterval);
+    });
+});
+</script>
+
+</body>
+</html>

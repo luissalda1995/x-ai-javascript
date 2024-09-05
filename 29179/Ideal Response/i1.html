@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shipment Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+      }
+      .progress-bar {
+        height: 8px;
+        background-color: #4caf50;
+        border-radius: 5px;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .vehicle-icon {
+        font-size: 24px;
+        position: absolute;
+        top: -18px; /* To place the icon above the progress bar */
+        left: 0;
+        transition: left 1s linear;
+      }
+      .vehicle-car {
+        color: #007bff; /* Blue for car */
+      }
+      .vehicle-boat {
+        color: #28a745; /* Green for boat */
+      }
+      .vehicle-airplane {
+        color: #ff851b; /* Orange for airplane */
+      }
+      .table-bordered {
+        border: 1px solid #ddd;
+      }
+      .table-bordered th,
+      .table-bordered td {
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 p-10">
+    <div class="container mx-auto">
+      <h1 class="text-3xl font-bold text-gray-800 text-center mb-8">
+        Shipment Dashboard
+      </h1>
+
+      <button
+        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded mb-6"
+        id="openModal"
+      >
+        Create New Shipment
+      </button>
+
+      <!-- Shipment Table -->
+      <table
+        class="min-w-full bg-white rounded-lg shadow-md overflow-hidden mb-6 table-bordered"
+      >
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="py-3 px-4 text-left">Origin</th>
+            <th class="py-3 px-4 text-left">Destination</th>
+            <th class="py-3 px-4 text-left">Vehicle</th>
+            <th class="py-3 px-4 text-left">Distance (km)</th>
+            <th class="py-3 px-4 text-center">Status</th>
+            <th class="py-3 px-4 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="shipmentTableBody"></tbody>
+      </table>
+
+      <!-- Tracking Panel -->
+      <div id="trackingPanel" class="space-y-4"></div>
+    </div>
+
+    <!-- Modal for creating new shipment -->
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden" id="modal">
+      <div class="bg-white w-96 mx-auto mt-20 p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-semibold mb-4">Create Shipment</h2>
+        <form id="createShipmentForm">
+          <input
+            type="text"
+            id="origin"
+            placeholder="Origin"
+            class="w-full px-4 py-2 mb-4 border rounded"
+            required
+          />
+          <input
+            type="text"
+            id="destination"
+            placeholder="Destination"
+            class="w-full px-4 py-2 mb-4 border rounded"
+            required
+          />
+          <select
+            id="vehicleType"
+            class="w-full px-4 py-2 mb-4 border rounded"
+            required
+          >
+            <option value="">Select Vehicle</option>
+            <option value="car">Car</option>
+            <option value="ship">Boat</option>
+            <option value="plane">Airplane</option>
+          </select>
+          <input
+            type="number"
+            id="distance"
+            placeholder="Distance (km)"
+            class="w-full px-4 py-2 mb-4 border rounded"
+            required
+          />
+          <button
+            type="submit"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 w-full rounded"
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            class="mt-3 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 w-full rounded"
+            id="closeModal"
+          >
+            Cancel
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      let shipments = [];
+      const mockData = [
+        {
+          id: 1,
+          origin: "Col",
+          destination: "USA",
+          vehicle: "car",
+          distance: 1000,
+          progress: 0,
+          status: "Pending",
+        },
+        {
+          id: 2,
+          origin: "Ecu",
+          destination: "USA",
+          vehicle: "plane",
+          distance: 1200,
+          progress: 0,
+          status: "Pending",
+        },
+        {
+          id: 3,
+          origin: "Bol",
+          destination: "USA",
+          vehicle: "ship",
+          distance: 1500,
+          progress: 0,
+          status: "Pending",
+        },
+      ];
+      const speeds = { car: 80, ship: 50, plane: 300 };
+
+      $(document).ready(function () {
+        // Initialize the table with mock data
+        shipments = [...mockData];
+        shipments.forEach(addShipmentToTable);
+
+        // Open modal
+        $("#openModal").click(function () {
+          $("#modal").removeClass("hidden");
+        });
+
+        // Close modal
+        $("#closeModal").click(function () {
+          $("#modal").addClass("hidden");
+        });
+
+        // Create new shipment
+        $("#createShipmentForm").submit(function (event) {
+          event.preventDefault();
+          const origin = $("#origin").val();
+          const destination = $("#destination").val();
+          const vehicle = $("#vehicleType").val();
+          const distance = parseInt($("#distance").val());
+
+          const shipment = {
+            id: shipments.length + 1,
+            origin,
+            destination,
+            vehicle,
+            distance,
+            progress: 0,
+            status: "Pending",
+          };
+
+          shipments.push(shipment);
+          addShipmentToTable(shipment);
+          $("#modal").addClass("hidden");
+          this.reset();
+        });
+      });
+
+      function addShipmentToTable(shipment) {
+        const vehicleIconClass = getVehicleIconClass(shipment.vehicle);
+        const row = `
+        <tr class="border-b">
+          <td class="py-3 px-4">${shipment.origin}</td>
+          <td class="py-3 px-4">${shipment.destination}</td>
+          <td class="py-3 px-4"><i class="fas fa-${shipment.vehicle} ${vehicleIconClass}"></i></td>
+          <td class="py-3 px-4">${shipment.distance}</td>
+          <td class="py-3 px-4 text-center" id="status-${shipment.id}">${shipment.status}</td>
+          <td class="py-3 px-4 text-center">
+            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded" onclick="startShipment(${shipment.id})">Start</button>
+            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded" onclick="cancelShipment(${shipment.id})">Cancel</button>
+          </td>
+        </tr>`;
+        $("#shipmentTableBody").append(row);
+      }
+
+      function startShipment(id) {
+        const shipment = shipments.find((s) => s.id === id);
+        if (shipment.status === "Pending") {
+          shipment.status = "In Progress";
+          $(`#status-${shipment.id}`).text(shipment.status);
+          trackShipment(shipment);
+        }
+      }
+
+      function cancelShipment(id) {
+        const shipment = shipments.find((s) => s.id === id);
+        shipment.status = "Canceled";
+        $(`#status-${shipment.id}`).text(shipment.status);
+        $(`#tracking-${shipment.id}`).remove();
+      }
+
+      function trackShipment(shipment) {
+        const vehicleIconClass = getVehicleIconClass(shipment.vehicle);
+        const trackingPanel = $("#trackingPanel");
+        const trackingItem = `
+        <div class="bg-white p-4 rounded-lg shadow-lg relative" id="tracking-${shipment.id}">
+          <p class="mb-2">${shipment.origin} to ${shipment.destination}</p>
+          <div class="relative w-full bg-gray-200 h-2 rounded-full">
+            <div class="progress-bar" id="progress-bar-${shipment.id}" style="width: 0%;"></div>
+            <i class="fas fa-${shipment.vehicle} vehicle-icon ${vehicleIconClass}" id="vehicle-icon-${shipment.id}"></i>
+          </div>
+        </div>`;
+        trackingPanel.append(trackingItem);
+
+        const speed = speeds[shipment.vehicle];
+        const interval = setInterval(function () {
+          shipment.progress += (speed / shipment.distance) * 5;
+          if (shipment.progress >= 100) {
+            shipment.progress = 100;
+            shipment.status = "Delivered";
+            clearInterval(interval);
+            $(`#status-${shipment.id}`).text(shipment.status);
+          }
+          $(`#progress-bar-${shipment.id}`).css(
+            "width",
+            `${shipment.progress}%`
+          );
+          $(`#vehicle-icon-${shipment.id}`).css(
+            "left",
+            `${shipment.progress}%`
+          );
+        }, 1000);
+      }
+
+      function getVehicleIconClass(vehicle) {
+        switch (vehicle) {
+          case "car":
+            return "vehicle-car";
+          case "ship":
+            return "vehicle-boat";
+          case "plane":
+            return "vehicle-airplane";
+          default:
+            return "";
+        }
+      }
+    </script>
+  </body>
+</html>

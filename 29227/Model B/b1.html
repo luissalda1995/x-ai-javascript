@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Zone Event Converter</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+        .btn-primary { background-color: #4285f4; border-color: #4285f4; }
+        .card-header { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Create Event</div>
+                <div class="card-body">
+                    <form id="eventForm">
+                        <input type="text" class="form-control mb-2" placeholder="Event Name" required>
+                        <input type="text" class="form-control mb-2" placeholder="Participants" required>
+                        <input type="number" class="form-control mb-2" placeholder="Duration (minutes)" required>
+                        <input type="date" class="form-control mb-2" id="eventDate" required>
+                        <input type="time" class="form-control mb-2" id="eventTime" required>
+                        <select id="timezoneFrom" class="form-control mb-2"></select>
+                        <button type="submit" class="btn btn-primary">Create Event</button>
+                        <button type="button" class="btn btn-secondary" id="integrateBtn">Integrate with Calendar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@5.10.1/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@5.10.1/main.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.33/moment-timezone-with-data.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        events: [],
+        eventClick: function(info) {
+            alert('Event: ' + info.event.title + '\nTime: ' + info.event.start.toLocaleString());
+        }
+    });
+    calendar.render();
+
+    // Populate timezone select
+    const timezoneSelect = document.getElementById('timezoneFrom');
+    moment.tz.names().forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        timezoneSelect.appendChild(option);
+    });
+
+    // Event creation
+    document.getElementById('eventForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const eventData = {
+            title: this.elements[0].value,
+            start: moment.tz(`${this.elements[3].value}T${this.elements[4].value}`, this.elements[5].value).format(),
+            allDay: false,
+            duration: moment.duration(parseInt(this.elements[2].value), 'minutes').asMilliseconds()
+        };
+        calendar.addEvent(eventData);
+        this.reset();
+    });
+
+    // Placeholder for calendar integration - this would need actual API integration
+    document.getElementById('integrateBtn').addEventListener('click', function() {
+        alert('This would integrate with your calendar. Implement API calls here.');
+    });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Zone Event Converter</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+        .form-container, .calendar-container { padding: 20px; }
+        .btn-google { background-color: #4285F4; color: white; }
+        .btn-outlook { background-color: #0078D7; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4 form-container">
+            <h3>Create Event</h3>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label for="eventName">Event Name</label>
+                    <input type="text" class="form-control" id="eventName" required>
+                </div>
+                <div class="form-group">
+                    <label for="participants">Participants</label>
+                    <input type="text" class="form-control" id="participants">
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration (minutes)</label>
+                    <input type="number" class="form-control" id="duration" value="60">
+                </div>
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" class="form-control" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="time">Time</label>
+                    <input type="time" class="form-control" id="time" required>
+                </div>
+                <div class="form-group">
+                    <label for="timezoneFrom">Time Zone From</label>
+                    <select class="form-control" id="timezoneFrom"></select>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Event</button>
+                <button type="button" class="btn btn-google"><i class="fab fa-google"></i> Add to Google Calendar</button>
+                <button type="button" class="btn btn-outlook"><i class="fab fa-windows"></i> Add to Outlook</button>
+            </form>
+        </div>
+        <div class="col-md-8 calendar-container">
+            <select id="viewTimezone" class="form-control mb-3" style="width: auto;"></select>
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.33/moment-timezone-with-data.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timezones = moment.tz.names();
+    const timezoneFrom = document.getElementById('timezoneFrom');
+    const viewTimezone = document.getElementById('viewTimezone');
+    
+    timezones.forEach(zone => {
+        const option = document.createElement("option");
+        option.value = zone;
+        option.text = zone;
+        timezoneFrom.add(option);
+        viewTimezone.add(option.cloneNode(true));
+    });
+
+    viewTimezone.value = moment.tz.guess();
+
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        header: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'month,agendaWeek,agendaDay'
+        },
+        timeZone: viewTimezone.value,
+        eventClick: function(info) {
+            alert('Event: ' + info.event.title + '\nTime: ' + info.event.start.format());
+        }
+    });
+    calendar.render();
+
+    document.getElementById('eventForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const eventName = document.getElementById('eventName').value;
+        const participants = document.getElementById('participants').value;
+        const duration = parseInt(document.getElementById('duration').value);
+        const date = document.getElementById('date').value;
+        const time = document.getElementById('time').value;
+        const fromZone = document.getElementById('timezoneFrom').value;
+        const startDateTime = moment.tz(`${date} ${time}`, fromZone);
+        const event = {
+            title: eventName,
+            start: startDateTime,
+            duration: { minutes: duration },
+            allDay: false
+        };
+        calendar.addEvent(event);
+    });
+
+    viewTimezone.addEventListener('change', function() {
+        calendar.setOption('timeZone', this.value);
+    });
+});
+</script>
+
+</body>
+</html>

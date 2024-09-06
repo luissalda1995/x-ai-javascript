@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Seat Booking</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+    body { font-family: 'Arial', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; }
+    .movie-select, .seating-area, .summary { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .seat { width: 30px; height: 30px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; }
+    .available { background: #90ee90; }
+    .selected { background: #4169e1; color: white; }
+    .occupied { background: #d3d3d3; cursor: not-allowed; }
+    .legend { display: flex; margin-top: 10px; }
+    .legend div { margin-right: 10px; }
+    .seat.legend-item { width: 20px; height: 20px; }
+    button { background: #4CAF50; border: none; color: white; padding: 10px 20px; text-transform: uppercase; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #45a049; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="movie-select">
+        <h2>Select a Movie</h2>
+        <select id="movieSelect">
+            <option value="Movie1">The Avengers</option>
+            <option value="Movie2">Inception</option>
+            <option value="Movie3">Interstellar</option>
+        </select>
+    </div>
+
+    <div class="seating-area">
+        <h2>Seating Chart</h2>
+        <div id="seatingChart"></div>
+        <div class="legend">
+            <div><div class="seat available legend-item"></div> Available</div>
+            <div><div class="seat selected legend-item"></div> Selected</div>
+            <div><div class="seat occupied legend-item"></div> Occupied</div>
+        </div>
+    </div>
+
+    <div class="summary">
+        <h2>Booking Summary</h2>
+        <p>Selected Seats: <span id="selectedSeatsCount">0</span></p>
+        <p>Total Price: $<span id="totalPrice">0</span></p>
+        <button id="confirmBooking">Confirm Booking</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const basePrice = 10;
+    let selectedSeats = [];
+    const totalSeats = 50;
+    let occupiedSeats = [3, 7, 15, 22, 35]; // Example occupied seats
+
+    function renderSeats() {
+        let seatHTML = '';
+        for(let i = 1; i <= totalSeats; i++) {
+            let seatClass = 'available';
+            if (occupiedSeats.includes(i)) seatClass = 'occupied';
+            else if (selectedSeats.includes(i)) seatClass = 'selected';
+            seatHTML += `<div class="seat ${seatClass}" data-seat="${i}">${i}</div>`;
+        }
+        $('#seatingChart').html(seatHTML);
+    }
+
+    function updateSummary() {
+        $('#selectedSeatsCount').text(selectedSeats.length);
+        let percentageFilled = (selectedSeats.length / (totalSeats - occupiedSeats.length)) * 100;
+        let dynamicPrice = basePrice * (1 + percentageFilled / 100);
+        $('#totalPrice').text(dynamicPrice.toFixed(2));
+    }
+
+    function saveToLocalStorage() {
+        localStorage.setItem('booking', JSON.stringify({
+            movie: $('#movieSelect').val(),
+            seats: selectedSeats,
+            total: $('#totalPrice').text()
+        }));
+    }
+
+    function loadFromLocalStorage() {
+        let booking = JSON.parse(localStorage.getItem('booking'));
+        if (booking) {
+            $('#movieSelect').val(booking.movie);
+            selectedSeats = booking.seats;
+            updateSummary();
+        }
+    }
+
+    $('#seatingChart').on('click', '.seat.available', function() {
+        let seatNumber = parseInt($(this).data('seat'));
+        if ($(this).hasClass('selected')) {
+            selectedSeats = selectedSeats.filter(seat => seat !== seatNumber);
+            $(this).removeClass('selected');
+        } else {
+            selectedSeats.push(seatNumber);
+            $(this).addClass('selected');
+        }
+        updateSummary();
+        saveToLocalStorage();
+    });
+
+    $('#confirmBooking').on('click', function() {
+        if (selectedSeats.length > 0) {
+            alert('Booking confirmed for seats: ' + selectedSeats.join(', '));
+            // Here you would typically send this data to a server
+        } else {
+            alert('Please select at least one seat.');
+        }
+    });
+
+    // Initial render
+    renderSeats();
+    loadFromLocalStorage();
+    updateSummary();
+});
+</script>
+
+</body>
+</html>

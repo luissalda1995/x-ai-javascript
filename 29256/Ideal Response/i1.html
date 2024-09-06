@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Movie Seat Booking</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css?family=Lato&display=swap");
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: #242333;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        font-family: "Lato", sans-serif;
+        margin: 0;
+      }
+
+      .movie-container {
+        margin: 20px 0;
+      }
+
+      .movie-container select {
+        background-color: #fff;
+        border: 0;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-left: 10px;
+        padding: 5px 15px;
+        -moz-appearance: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .container {
+        perspective: 1000px;
+        margin-bottom: 30px;
+      }
+
+      .seat {
+        background-color: #444451;
+        height: 12px;
+        width: 15px;
+        margin: 3px;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+      }
+
+      .seat.selected {
+        background-color: #6feaf6;
+      }
+
+      .seat.occupied {
+        background-color: #fff;
+      }
+
+      .seat:hover {
+        cursor: pointer;
+      }
+
+      .seat:nth-of-type(2) {
+        margin-right: 18px;
+      }
+
+      .seat:nth-last-of-type(2) {
+        margin-left: 18px;
+      }
+
+      .seat:not(.occupied):hover {
+        cursor: pointer;
+        transform: scale(1.2);
+      }
+
+      .showcase .seat:not(.occupied):hover {
+        cursor: default;
+        transform: scale(1);
+      }
+
+      .showcase {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 5px 10px;
+        border-radius: 5px;
+        color: #777;
+        list-style-type: none;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .showcase li {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 10px;
+      }
+
+      .showcase li small {
+        margin-left: 2px;
+      }
+
+      .row {
+        display: flex;
+      }
+
+      .screen {
+        background-color: #fff;
+        height: 70px;
+        width: 100%;
+        margin: 15px 0;
+        transform: rotateX(-45deg);
+        box-shadow: 0 3px 10px rgba(255, 255, 255, 0.7);
+      }
+
+      p.text {
+        margin: 5px 0;
+      }
+
+      p.text span {
+        color: #6feaf6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="movie-container">
+      <label>Pick a movie:</label>
+      <select id="movie">
+        <option value="10">Avengers: Endgame</option>
+        <option value="12">Joker</option>
+        <option value="8">Toy Story 4</option>
+        <option value="9">The Lion King</option>
+      </select>
+    </div>
+
+    <div class="container">
+      <div class="screen"></div>
+      <div class="seats-container"></div>
+    </div>
+
+    <p class="text">
+      You have selected <span id="count">0</span> seats for a price of $<span id="total">0</span>
+    </p>
+    <button id="confirmBooking">Confirm Booking</button>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        let movieSeatsData = JSON.parse(localStorage.getItem("movieSeatsData")) || {
+          0: Array(48).fill(null), // Avengers: Endgame
+          1: Array(48).fill(null), // Joker
+          2: Array(48).fill(null), // Toy Story 4
+          3: Array(48).fill(null), // The Lion King
+        };
+
+        let selectedMovieIndex = $("#movie").prop("selectedIndex");
+        let ticketPrice = +$("#movie").val();
+
+        // Update total and count with dynamic price adjustment
+        function updateSelectedCount() {
+          const selectedSeats = $(".row .seat.selected");
+          const occupiedSeats = $(".row .seat.occupied");
+          const totalSeats = $(".row .seat").length;
+          const selectedSeatsCount = selectedSeats.length;
+          const occupiedSeatsCount = occupiedSeats.length;
+
+          const percentageOccupied = occupiedSeatsCount / totalSeats;
+
+          let dynamicPrice = ticketPrice;
+          if (percentageOccupied > 0.75) {
+            dynamicPrice += ticketPrice * 0.3;
+          } else if (percentageOccupied > 0.5) {
+            dynamicPrice += ticketPrice * 0.2;
+          } else if (percentageOccupied > 0.25) {
+            dynamicPrice += ticketPrice * 0.1;
+          }
+
+          $("#count").text(selectedSeatsCount);
+          $("#total").text((selectedSeatsCount * dynamicPrice).toFixed(2));
+
+        }
+
+        // Generate seats dynamically
+        function generateSeats(rows, seatsPerRow) {
+          const container = $(".seats-container");
+          container.empty();
+
+          const fragment = document.createDocumentFragment();
+          for (let i = 0; i < rows; i++) {
+            const row = document.createElement("div");
+            row.classList.add("row");
+            for (let j = 0; j < seatsPerRow; j++) {
+              const seat = document.createElement("div");
+              seat.classList.add("seat");
+              row.appendChild(seat);
+            }
+            fragment.appendChild(row);
+          }
+          container.append(fragment);
+        }
+
+        // Populate UI from movieSeatsData object
+        function populateUI() {
+          selectedMovieIndex = $("#movie").prop("selectedIndex");
+
+          if (movieSeatsData[selectedMovieIndex]) {
+            $(".row .seat").each(function (index) {
+              $(this).removeClass("selected occupied");
+              const seatState = movieSeatsData[selectedMovieIndex][index];
+              if (seatState === "selected") {
+                $(this).addClass("selected");
+              } else if (seatState === "occupied") {
+                $(this).addClass("occupied");
+              }
+            });
+          }
+        }
+
+        $("#movie").on("change", function () {
+          selectedMovieIndex = $(this).prop("selectedIndex");
+          ticketPrice = +$(this).val();
+
+          populateUI();
+          updateSelectedCount();
+        });
+
+        $(".seats-container").on("click", ".seat", function () {
+          if (!$(this).hasClass("occupied")) {
+            $(this).toggleClass("selected");
+            updateSelectedCount();
+          }
+        });
+
+        $("#confirmBooking").on("click", function () {
+          const selectedSeats = $(".row .seat.selected");
+
+          selectedSeats.each(function (index) {
+            $(this).removeClass("selected").addClass("occupied");
+
+            const seatIndex = $(".row .seat").index(this);
+            movieSeatsData[selectedMovieIndex][seatIndex] = "occupied";
+          });
+
+          localStorage.setItem("movieSeatsData", JSON.stringify(movieSeatsData));
+          updateSelectedCount();
+        });
+
+        generateSeats(6, 8);
+        populateUI();
+        updateSelectedCount();
+      });
+    </script>
+  </body>
+</html>

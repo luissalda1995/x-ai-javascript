@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Seat Booking</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+<style>
+    body { font-family: 'Arial', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .movie-select, .seat-chart, .summary { margin-bottom: 20px; }
+    .seat { width: 30px; height: 30px; background: #28a745; border: none; margin: 5px; border-radius: 5px; cursor: pointer; }
+    .seat.selected { background: #ffc107; }
+    .seat.occupied { background: #dc3545; cursor: not-allowed; }
+    .legend span { padding: 5px 10px; margin-right: 10px; border-radius: 3px; }
+    .price { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Movie Seat Booking</h1>
+    <div class="movie-select">
+        <label for="movies">Choose a movie: </label>
+        <select id="movies">
+            <option value="10">Action Thriller - $10</option>
+            <option value="12">Sci-Fi Adventure - $12</option>
+            <option value="15">Romantic Comedy - $15</option>
+        </select>
+    </div>
+
+    <div class="seat-chart">
+        <div class="legend">
+            <span style="background: #28a745;">Available</span>
+            <span style="background: #ffc107;">Selected</span>
+            <span style="background: #dc3545;">Occupied</span>
+        </div>
+        <div id="seats"></div>
+    </div>
+
+    <div class="summary">
+        <p>Selected Seats: <span id="selected-count">0</span></p>
+        <p>Total Price: $<span id="total-price">0</span></p>
+        <button onclick="checkout()">Checkout</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    const seats = Array(50).fill().map((_, i) => ({
+        id: i + 1,
+        status: Math.random() > 0.7 ? 'occupied' : 'available'
+    }));
+    const basePrice = {10: 10, 12: 12, 15: 15};
+    let selectedSeats = [];
+    let currentMoviePrice = 10;
+
+    function renderSeats() {
+        $('#seats').html(seats.map(seat => {
+            return `<button class="seat ${seat.status}" ${seat.status === 'occupied' ? 'disabled' : ''} data-id="${seat.id}">${seat.id}</button>`;
+        }).join(''));
+    }
+
+    function updateUI() {
+        $('#selected-count').text(selectedSeats.length);
+        let price = currentMoviePrice * selectedSeats.length * (1 + selectedSeats.length * 0.05);
+        $('#total-price').text(price.toFixed(2));
+    }
+
+    function saveToLocalStorage() {
+        localStorage.setItem('booking', JSON.stringify({
+            seats: selectedSeats,
+            moviePrice: currentMoviePrice,
+            total: currentMoviePrice * selectedSeats.length * (1 + selectedSeats.length * 0.05)
+        }));
+    }
+
+    function loadFromLocalStorage() {
+        const booking = JSON.parse(localStorage.getItem('booking'));
+        if(booking) {
+            selectedSeats = booking.seats;
+            currentMoviePrice = booking.moviePrice;
+            updateUI();
+            selectedSeats.forEach(id => $(`.seat[data-id="${id}"]`).addClass('selected'));
+        }
+    }
+
+    $(document).ready(function() {
+        renderSeats();
+        loadFromLocalStorage();
+
+        $('#movies').change(function() {
+            currentMoviePrice = parseInt($(this).val());
+            updateUI();
+        });
+
+        $('#seats').on('click', '.seat.available', function() {
+            const seatId = $(this).data('id');
+            if ($(this).hasClass('selected')) {
+                selectedSeats = selectedSeats.filter(id => id !== seatId);
+                $(this).removeClass('selected');
+            } else {
+                selectedSeats.push(seatId);
+                $(this).addClass('selected');
+            }
+            updateUI();
+            saveToLocalStorage();
+        });
+    });
+
+    function checkout() {
+        alert('Booking confirmed! Thank you for your purchase.');
+        localStorage.removeItem('booking');
+        location.reload();
+    }
+</script>
+</body>
+</html>

@@ -1,152 +1,348 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Pet</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f3f3f3;
-        }
-        .pet-container {
-            text-align: center;
-            width: 300px;
-            border: 2px solid #000;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-        }
-        .pet {
-            font-size: 48px;
-        }
-        .pet-image {
-            width: 150px;
-            transition: transform 0.5s;
-            margin: auto;
-        }
-        .stats {
-            margin-bottom: 20px;
-        }
-        .stat-bar {
-            width: 100%;
-            background-color: #ddd;
-            margin: 5px 0;
-        }
-        .stat-bar div {
-            height: 20px;
-            transition: width 0.5s;
-        }
-        .health { background-color: #4CAF50; }
-        .happiness { background-color: #2196F3; }
-        .hunger { background-color: #FF9800; }
-        button {
-            margin: 5px;
-            padding: 10px;
-            cursor: pointer;
-        }
-        @keyframes content-change {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .animate-content {
-            animation: content-change 2s;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Pet</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+
+    #petWidget {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #petArea {
+      height: 200px;
+      background: #e0f7fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      transition: background-color 0.5s;
+    }
+
+    #pet {
+      font-size: 50px;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .controls button {
+      margin: 5px;
+      padding: 10px;
+      border: none;
+      background: #2196F3;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .controls button:disabled {
+      background: #ddd;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 20px;
+    }
+
+    .progress {
+      height: 25px;
+      margin-bottom: 10px;
+    }
+
+    #journal {
+      background: #f9f9f9;
+      padding: 10px;
+      border-left: 4px solid #2196F3;
+      margin-top: 20px;
+    }
+
+    .countdown {
+      font-size: 12px;
+      margin-top: 5px;
+      color: #555;
+    }
+
+    /* Custom styles for toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1050;
+    }
+
+    /* Pet Status Section */
+    #petStatus {
+      font-size: 1.5em;
+      margin-top: 10px;
+      padding: 15px;
+      background: #f0f0f5;
+      border-radius: 8px;
+      text-align: center;
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="pet-container">
-    <h2>My Virtual Pet</h2>
-    <div class="pet" id="pet">
-        🐱
-        <div id="petImage" class="pet-image"></div>
+  <div id="petWidget">
+    <h1 class="text-center">Virtual Pet 🐾</h1>
+    <div id="petArea">
+      <div id="pet" class="pet-stage">🐣</div>
     </div>
-    <div class="stats">
-        <div class="stat-bar">Health:<div id="health" class="health" style="width:100%;"></div></div>
-        <div class="stat-bar">Happiness:<div id="happiness" class="happiness" style="width:100%;"></div></div>
-        <div class="stat-bar">Hunger:<div id="hunger" class="hunger" style="width:0%;"></div></div>
-    </div>
-    <div>
-        <button onclick="feed()">Feed</button>
-        <button onclick="play()">Play</button>
-        <button onclick="care()">Care</button>
-    </div>
-</div>
 
-<script>
+    <!-- Pet Status Section -->
+    <div id="petStatus" class="text-center">Your pet is happy! 😊</div>
+
+    <div class="controls text-center">
+      <div>
+        <button id="feed" onclick="feed()">Feed 🍎</button>
+        <div id="feedCountdown" class="countdown"></div>
+      </div>
+      <div>
+        <button id="play" onclick="play()">Play 🎾</button>
+        <div id="playCountdown" class="countdown"></div>
+      </div>
+      <div>
+        <button id="care" onclick="care()">Care 💖</button>
+        <div id="careCountdown" class="countdown"></div>
+      </div>
+    </div>
+
+    <div id="status">
+      <h3>Status</h3>
+      <div>
+        Health: <div class="progress"><div class="progress-bar bg-success" id="healthBar" role="progressbar" style="width: 100%"></div></div>
+      </div>
+      <div>
+        Happiness: <div class="progress"><div class="progress-bar bg-warning" id="happinessBar" role="progressbar" style="width: 100%"></div></div>
+      </div>
+      <div>
+        Hunger: <div class="progress"><div class="progress-bar bg-danger" id="hungerBar" role="progressbar" style="width: 0%"></div></div>
+      </div>
+      <div>Age: <span id="age">Baby</span> <i class="fas fa-baby"></i></div>
+      <div>Life Expectancy: <span id="lifeExpectancy">100</span>s <i class="fas fa-hourglass-half"></i></div>
+    </div>
+
+    <div id="journal">
+      <h3>Journal</h3>
+      <ul id="journalEntries"></ul>
+    </div>
+  </div>
+
+  <!-- Bootstrap Toast Container -->
+  <div class="toast-container"></div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
     let pet = {
-        health: 100,
-        happiness: 100,
-        hunger: 0
+      health: 100,
+      happiness: 100,
+      hunger: 0,
+      ageStage: 0,
+      lifeExpectancy: 200,
+      alive: true,
+      lastFeed: Date.now(),
+      lastPlay: Date.now(),
+      lastCare: Date.now(),
+      journal: []
     };
 
-    // Ensure values are between 0 and 100
-    function checkValues(value) {
-        if(value < 0) {
-            return 0;
-        } else if(value > 100) {
-            return 100;
-        } else {
-            return value;
-        }
+    const stages = ['🐣', '🐕', '🐈', '🐢'];
+    const ageNames = ['Baby', 'Child', 'Adult', 'Elderly'];
+
+    // Dynamic cooldowns and thresholds based on pet's age stage
+    const cooldowns = [
+      { feed: 15000, play: 30000, care: 20000 }, // Baby
+      { feed: 20000, play: 25000, care: 18000 }, // Child
+      { feed: 25000, play: 20000, care: 15000 }, // Adult
+      { feed: 30000, play: 15000, care: 10000 }  // Elderly
+    ];
+
+    function updateCooldowns() {
+      const currentCooldowns = cooldowns[pet.ageStage];
+      return currentCooldowns;
     }
 
     function updatePet() {
-        pet.health = checkValues(pet.health);
-        pet.happiness = checkValues(pet.happiness);
-        pet.hunger = checkValues(pet.hunger);
-        document.getElementById('health').style.width = pet.health + '%';
-        document.getElementById('happiness').style.width = pet.happiness + '%';
-        document.getElementById('hunger').style.width = pet.hunger + '%';
+      document.getElementById('healthBar').style.width = `${pet.health}%`;
+      document.getElementById('happinessBar').style.width = `${pet.happiness}%`;
+      document.getElementById('hungerBar').style.width = `${pet.hunger}%`;
 
-        let imageSrc = '🤨';
-        if (pet.happiness > 80 && pet.health > 80) imageSrc = '😁';
-        else if (pet.health < 30 || pet.happiness < 30) imageSrc = '😭';
-        if (pet.hunger > 70) imageSrc = '🍔';
+      document.getElementById('age').textContent = ageNames[pet.ageStage];
+      document.getElementById('pet').textContent = stages[pet.ageStage];
+      document.getElementById('lifeExpectancy').textContent = pet.lifeExpectancy;
 
-        const petImage = document.getElementById('petImage');
-        petImage.innerHTML = imageSrc;
-        petImage.classList.toggle('animate-content');
+      updatePetStatus();
+
+      if (pet.health < 20 || pet.happiness < 20 || pet.hunger > 80) {
+        die();
+      }
+    }
+
+    function updatePetStatus() {
+      const statusElement = document.getElementById('petStatus');
+      if (pet.hunger > 50) {
+        pet.lifeExpectancy -= 5;
+        statusElement.textContent = "Your pet is hungry! 🍽️";
+      } else if (pet.health < 50) {
+        pet.lifeExpectancy -= 10;
+        statusElement.textContent = "Your pet is sick! 😷";
+      } else if (pet.happiness < 50) {
+        pet.lifeExpectancy -= 3;
+        statusElement.textContent = "Your pet is sad! 😢";
+      } else {
+        statusElement.textContent = "Your pet is happy! 😊";
+      }
     }
 
     function feed() {
-        pet.hunger -= 20;
-        if (pet.hunger < 0) pet.hunger = 0;
-        pet.health += 10;
-        if (pet.health > 100) pet.health = 100;
-        updatePet();
+      const { feed } = updateCooldowns();
+      if (Date.now() - pet.lastFeed < feed) return;
+      pet.hunger = Math.max(0, pet.hunger - 20);
+      pet.health = Math.min(100, pet.health + 10);
+      pet.lastFeed = Date.now();
+      addToJournal('Fed the pet.');
+      updatePet();
+      startCooldown('feed', feed);
+      showToast('Success', 'You fed the pet!', 'success');
     }
 
     function play() {
-        pet.happiness += 20;
-        pet.hunger += 10;
-        pet.health -= 5;
-        updatePet();
+      const { play } = updateCooldowns();
+      if (Date.now() - pet.lastPlay < play) return;
+      pet.happiness = Math.min(100, pet.happiness + 20);
+      pet.health = Math.min(100, pet.health + 5);
+      pet.hunger = Math.max(0, pet.hunger + 10);
+      pet.lastPlay = Date.now();
+      addToJournal('Played with the pet.');
+      updatePet();
+      startCooldown('play', play);
+      showToast('Success', 'You played with the pet!', 'info');
     }
 
     function care() {
-        pet.health += 15;
-        pet.happiness += 10;
-        updatePet();
+      const { care } = updateCooldowns();
+      if (Date.now() - pet.lastCare < care) return;
+      pet.health = Math.min(100, pet.health + 15);
+      pet.happiness = Math.min(100, pet.happiness + 15);
+      pet.lastCare = Date.now();
+      addToJournal('Cared for the pet.');
+      updatePet();
+      startCooldown('care', care);
+      showToast('Success', 'You cared for the pet!', 'primary');
     }
 
-    // Decrease hunger and happiness over time
+    function die() {
+      pet.alive = false;
+      showToast('Sad News', 'Your pet has passed away 💔', 'danger');
+      document.querySelectorAll('.controls button').forEach(btn => btn.disabled = true);
+      setTimeout(() => {
+        if (confirm('Would you like to adopt a new pet?')) {
+          resetPet();
+        }
+      }, 100);
+    }
+
+    function resetPet() {
+      pet = { ...pet, health: 100, happiness: 100, hunger: 0, ageStage: 0, lifeExpectancy: 200, alive: true };
+      document.querySelectorAll('.controls button').forEach(btn => btn.disabled = false);
+      updatePet();
+    }
+
+    function addToJournal(action) {
+      const entry = `${new Date().toLocaleString()}: ${action}`;
+      pet.journal.push(entry);
+      const ul = document.getElementById('journalEntries');
+      const li = document.createElement('li');
+      li.textContent = entry;
+      ul.appendChild(li);
+    }
+
+    function agePet() {
+      pet.ageStage = Math.min(pet.ageStage + 1, stages.length - 1);
+      pet.lifeExpectancy -= 10;
+      addToJournal(`Pet has grown into ${ageNames[pet.ageStage]} stage.`);
+      updatePet();
+    }
+
+    function startCooldown(action, cooldown) {
+      let timeLeft = cooldown / 1000;
+      document.getElementById(`${action}`).disabled = true;
+      const countdownElement = document.getElementById(`${action}Countdown`);
+      countdownElement.textContent = `Available in: ${timeLeft}s`;
+
+      const interval = setInterval(() => {
+        timeLeft--;
+        countdownElement.textContent = `Available in: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          countdownElement.textContent = '';
+          document.getElementById(`${action}`).disabled = false;
+        }
+      }, 1000);
+    }
+
+    function showToast(title, message, type) {
+      const toastId = `toast-${Date.now()}`;
+      const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">
+          <div class="d-flex">
+            <div class="toast-body">
+              <strong>${title}:</strong> ${message}
+            </div>
+          </div>
+        </div>`;
+
+      $('.toast-container').append(toastHtml);
+      $(`#${toastId}`).toast('show');
+    }
+
     setInterval(() => {
-        pet.hunger += 5;
-        pet.happiness -= 3;
-        pet.health -= 1;
+      if (pet.alive) {
+        pet.hunger += 1;
+        pet.health -= 0.5;
+        pet.happiness -= 0.5;
+        pet.lifeExpectancy -= 1;
+        if (pet.lifeExpectancy <= 0) die();
+        if (pet.hunger % 20 === 0 && pet.hunger > 0) agePet();
         updatePet();
-    }, 5000);
+      }
+    }, 1000);
+
+    startCooldown('feed', 15000);
+    startCooldown('play', 30000);
+    startCooldown('care', 20000);
 
     updatePet();
-</script>
+  </script>
 
 </body>
+
 </html>

@@ -1,95 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Virtual Pet</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<style>
-  body {
-    font-family: 'Poppins', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #f3f3f3;
-  }
-  .pet-container {
-    text-align: center;
-  }
-  .pet {
-    font-size: 48px;
-  }
-  .stats {
-    margin-bottom: 20px;
-  }
-  button {
-    margin: 5px;
-    padding: 10px 15px;
-    cursor: pointer;
-  }
-  .happy { color: green; }
-  .sad { color: blue; }
-  .hungry { color: red; }
-  @keyframes happyHop {
-    50% { transform: translateY(-10px); }
-  }
-  .animate.happy {
-    animation: happyHop 0.6s infinite;
-  }
-</style>
+    <meta charset="UTF-8">
+    <title>Virtual Pet Widget</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #f4f4f9; }
+        #petWidget {
+            width: 300px; margin: 20px auto; padding: 20px;
+            background: #fff; border-radius: 15px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #petDisplay { 
+            font-size: 60px; 
+            margin: 20px 0; 
+            transition: all 0.5s;
+        }
+        .statusBar { margin: 5px 0; }
+        .statusBar span { margin: 0 10px; }
+        button { 
+            margin: 5px; padding: 10px 15px; 
+            cursor: pointer; border: none; background: #007BFF; 
+            color: white; border-radius: 5px; 
+        }
+        #journal { 
+            height: 100px; overflow-y: auto; 
+            border: 1px solid #ccc; margin-top: 10px; 
+            padding: 10px; text-align: left; 
+        }
+    </style>
 </head>
 <body>
-<div class="pet-container">
-  <div class="stats">
-    <span>Health: <span id="health">100</span></span> |
-    <span>Happiness: <span id="happiness">50</span></span> |
-    <span>Hunger: <span id="hunger">50</span></span>
-  </div>
-  <div class="pet" id="pet">🐱</div>
-  <button onclick="feed()">Feed</button>
-  <button onclick="play()">Play</button>
-  <button onclick="care()">Care</button>
+
+<div id="petWidget">
+    <div id="petDisplay">🐣</div>
+    <div class="statusBar">
+        <span>Health: <i class="fas fa-heart"></i> <span id="health">100</span></span>
+        <span>Happiness: <i class="fas fa-smile"></i> <span id="happy">100</span></span>
+        <span>Hunger: <i class="fas fa-utensils"></i> <span id="hunger">0</span></span>
+    </div>
+    <div>Life Stage: <span id="lifeStage">Baby</span></div>
+    <div>Life Expectancy: <span id="lifeExpectancy">100s</span></div>
+    <button id="feed">Feed</button>
+    <button id="play">Play</button>
+    <button id="care">Care</button>
+    <div id="journal"></div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-  let health = 100;
-  let happiness = 50;
-  let hunger = 50;
-  
-  function updateDisplay() {
-    $('#health').text(health);
-    $('#happiness').text(happiness);
-    $('#hunger').text(hunger);
-    const pet = $('#pet');
-    pet.removeClass('happy sad hungry');
-    if(happiness > 70) pet.addClass('happy');
-    if(happiness < 30) pet.addClass('sad');
-    if(hunger > 70) pet.addClass('hungry');
-    if(pet.hasClass('happy')) pet.addClass('animate');
-  }
+\$(document).ready(function() {
+    let pet = {
+        health: 100,
+        happiness: 100,
+        hunger: 0,
+        age: 0,
+        lifeExpectancy: 100,
+        stage: 'Baby',
+        lastFeed: Date.now(),
+        lastPlay: Date.now()
+    };
 
-  function feed() {
-    hunger -= 10;
-    health += 5;
+    function updateDisplay() {
+        \$('#health').text(pet.health);
+        \$('#happy').text(pet.happiness);
+        \$('#hunger').text(pet.hunger);
+        \$('#lifeStage').text(pet.stage);
+        \$('#lifeExpectancy').text(pet.lifeExpectancy + 's');
+        \$('#petDisplay').html(getPetEmoji(pet));
+    }
+
+    function getPetEmoji(pet) {
+        let baseEmoji = '🐣';
+        if (pet.stage === 'Child') baseEmoji = '🐥';
+        else if (pet.stage === 'Adult') baseEmoji = '🐔';
+        else if (pet.stage === 'Elderly') baseEmoji = '🐓';
+        
+        if (pet.health < 20 || pet.happiness < 20 || pet.hunger > 80) return '💀';
+        return pet.happiness > 70 ? baseEmoji + '😄' : (pet.hunger > 50 ? baseEmoji + '😢' : baseEmoji + '😐');
+    }
+
+    function updateLife() {
+        pet.age += 1;
+        if (pet.health <= 20 || pet.happiness <= 20 || pet.hunger >= 80) {
+            \$('#petDisplay').html('💀');
+            alert('Your pet has died. Start over to play again.');
+            pet = {...pet, health: 100, happiness: 100, hunger: 0, age: 0, stage: 'Baby'};
+        } else {
+            pet.lifeExpectancy = Math.max(60, pet.lifeExpectancy - 0.1 + (pet.health + pet.happiness - pet.hunger) * 0.01);
+            if (pet.age % 10 === 0) {
+                pet.stage = ['Baby', 'Child', 'Adult', 'Elderly'][Math.floor(pet.age / 30)];
+            }
+        }
+        updateDisplay();
+    }
+
+    function logJournal(action) {
+        $ ('#journal').prepend(`<p> ${new Date().toLocaleTimeString()}: \${action}</p>`);
+    }
+
+    \$('#feed').on('click', function() {
+        if (Date.now() - pet.lastFeed > 15000) {
+            pet.hunger = Math.max(0, pet.hunger - 20);
+            pet.health += 5;
+            pet.lastFeed = Date.now();
+            logJournal('Fed the pet.');
+        } else {
+            alert("You can't feed the pet so soon!");
+        }
+    });
+
+    \$('#play').on('click', function() {
+        if (Date.now() - pet.lastPlay > 30000) {
+            pet.happiness += 15;
+            pet.hunger += 5;
+            pet.lastPlay = Date.now();
+            logJournal('Played with the pet.');
+        } else {
+            alert("You can't play with the pet so soon!");
+        }
+    });
+
+    \$('#care').on('click', function() {
+        pet.health += 10;
+        pet.happiness += 5;
+        logJournal('Cared for the pet.');
+    });
+
+    // Game loop
+    setInterval(updateLife, 1000);
     updateDisplay();
-  }
-
-  function play() {
-    happiness += 15;
-    hunger += 5;
-    updateDisplay();
-  }
-
-  function care() {
-    health += 10;
-    happiness += 5;
-    updateDisplay();
-  }
-
-  updateDisplay();
+});
 </script>
+
 </body>
 </html>

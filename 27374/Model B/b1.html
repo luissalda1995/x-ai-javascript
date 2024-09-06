@@ -1,114 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Virtual Pet</title>
-    <style>
-        #petWidget {
-            width: 300px;
-            border: 2px solid #000;
-            padding: 20px;
-            text-align: center;
-            font-family: Arial, sans-serif;
-        }
-        #petImage {
-            width: 150px;
-            transition: transform 0.5s;
-        }
-        .statBar {
-            width: 100%;
-            background-color: #ddd;
-            margin: 5px 0;
-        }
-        .statBar div {
-            height: 20px;
-            transition: width 0.5s;
-        }
-        .happy { background-color: #4CAF50; }
-        .sad { background-color: #f44336; }
-        .hungry { background-color: #FF9800; }
-        button {
-            margin: 5px;
-            padding: 10px;
-            cursor: pointer;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-        .animate-bounce {
-            animation: bounce 0.6s;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Pet</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+<style>
+body { font-family: 'Arial', sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+#petWidget { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+#petArea { height: 200px; background: #e0f7fa; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; border-radius: 4px; }
+#pet { font-size: 50px; }
+.controls button { margin: 5px; padding: 10px; border: none; background: #2196F3; color: white; cursor: pointer; border-radius: 4px; }
+.controls button:disabled { background: #ddd; cursor: not-allowed; }
+#status, #journal { margin-top: 20px; }
+#status div { margin: 5px 0; }
+#journal { background: #f9f9f9; padding: 10px; border-left: 4px solid #2196F3; }
+</style>
 </head>
 <body>
 
 <div id="petWidget">
-    <h2>My Virtual Pet</h2>
-    <img id="petImage" src="pet_normal.png" alt="Virtual Pet">
-    <div class="stats">
-        <div class="statBar"><div id="health" class="happy" style="width:100%;"></div></div>
-        <div class="statBar"><div id="happiness" class="happy" style="width:100%;"></div></div>
-        <div class="statBar"><div id="hunger" class="hungry" style="width:0%;"></div></div>
-    </div>
-    <div>
-        <button onclick="feed()">Feed</button>
-        <button onclick="play()">Play</button>
-        <button onclick="care()">Care</button>
-    </div>
+  <h1>Virtual Pet 🐾</h1>
+  <div id="petArea">
+    <div id="pet" class="pet-stage">🐣</div>
+  </div>
+  <div class="controls">
+    <button id="feed" onclick="feed()">Feed 🍎</button>
+    <button id="play" onclick="play()">Play 🎾</button>
+    <button id="care" onclick="care()">Care 💖</button>
+  </div>
+  <div id="status">
+    <div>Health: <span id="health">100</span> <i class="fas fa-heart"></i></div>
+    <div>Happiness: <span id="happiness">100</span> <i class="fas fa-smile"></i></div>
+    <div>Hunger: <span id="hunger">0</span> <i class="fas fa-utensils"></i></div>
+    <div>Age: <span id="age">Baby</span> <i class="fas fa-baby"></i></div>
+    <div>Life Expectancy: <span id="lifeExpectancy">100</span>s <i class="fas fa-hourglass-half"></i></div>
+  </div>
+  <div id="journal">
+    <h3>Journal</h3>
+    <ul id="journalEntries"></ul>
+  </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    let pet = {
-        health: 100,
-        happiness: 100,
-        hunger: 0
-    };
+let pet = {
+    health: 100,
+    happiness: 100,
+    hunger: 0,
+    ageStage: 0,
+    lifeExpectancy: 100,
+    alive: true,
+    lastFeed: Date.now(),
+    lastPlay: Date.now(),
+    journal: []
+};
 
-    function updatePet() {
-        $('#health').css('width', pet.health + '%');
-        $('#happiness').css('width', pet.happiness + '%');
-        $('#hunger').css('width', pet.hunger + '%');
+const stages = ['🐣', '🐕', '🐈', '🐢'];
+const ageNames = ['Baby', 'Child', 'Adult', 'Elderly'];
 
-        let imageSrc = 'pet_normal.png';
-        if (pet.happiness > 80 && pet.health > 80) imageSrc = 'pet_happy.png';
-        else if (pet.health < 30 || pet.happiness < 30) imageSrc = 'pet_sad.png';
-        if (pet.hunger > 70) imageSrc = 'pet_hungry.png';
-
-        $('#petImage').attr('src', imageSrc).toggleClass('animate-bounce', pet.happiness > 80);
+function updatePet() {
+    document.getElementById('health').textContent = pet.health;
+    document.getElementById('happiness').textContent = pet.happiness;
+    document.getElementById('hunger').textContent = pet.hunger;
+    document.getElementById('age').textContent = ageNames[pet.ageStage];
+    document.getElementById('pet').textContent = stages[pet.ageStage];
+    document.getElementById('lifeExpectancy').textContent = pet.lifeExpectancy;
+    
+    if (pet.health < 20 || pet.happiness < 20 || pet.hunger > 80) {
+        die();
     }
+}
 
-    function feed() {
-        pet.hunger -= 20;
-        if (pet.hunger < 0) pet.hunger = 0;
-        pet.health += 10;
-        if (pet.health > 100) pet.health = 100;
-        updatePet();
-    }
-
-    function play() {
-        pet.happiness += 20;
-        pet.hunger += 10;
-        pet.health -= 5;
-        updatePet();
-    }
-
-    function care() {
-        pet.health += 15;
-        pet.happiness += 10;
-        updatePet();
-    }
-
-    // Decrease hunger and happiness over time
-    setInterval(() => {
-        pet.hunger += 5;
-        pet.happiness -= 3;
-        pet.health -= 1;
-        updatePet();
-    }, 5000);
-
+function feed() {
+    if (Date.now() - pet.lastFeed < 15000) return;
+    pet.hunger = Math.max(0, pet.hunger - 20);
+    pet.health = Math.min(100, pet.health + 10);
+    pet.lastFeed = Date.now();
+    addToJournal('Fed the pet.');
     updatePet();
+}
+
+function play() {
+    if (Date.now() - pet.lastPlay < 30000) return;
+    pet.happiness = Math.min(100, pet.happiness + 20);
+    pet.health = Math.min(100, pet.health + 5);
+    pet.lastPlay = Date.now();
+    addToJournal('Played with the pet.');
+    updatePet();
+}
+
+function care() {
+    pet.health = Math.min(100, pet.health + 15);
+    pet.happiness = Math.min(100, pet.happiness + 15);
+    addToJournal('Cared for the pet.');
+    updatePet();
+}
+
+function die() {
+    pet.alive = false;
+    alert('Your pet has passed away. 💔');
+    document.querySelectorAll('.controls button').forEach(btn => btn.disabled = true);
+    setTimeout(() => {
+        if (confirm('Would you like to adopt a new pet?')) {
+            resetPet();
+        }
+    }, 100);
+}
+
+function resetPet() {
+    pet = { ...pet, health: 100, happiness: 100, hunger: 0, ageStage: 0, lifeExpectancy: 100, alive: true };
+    document.querySelectorAll('.controls button').forEach(btn => btn.disabled = false);
+    updatePet();
+}
+
+function addToJournal(action) {
+    const entry = `\${new Date().toLocaleString()}: \${action}`;
+    pet.journal.push(entry);
+    const ul = document.getElementById('journalEntries');
+    const li = document.createElement('li');
+    li.textContent = entry;
+    ul.appendChild(li);
+}
+
+function agePet() {
+    pet.ageStage = Math.min(pet.ageStage + 1, stages.length - 1);
+    pet.lifeExpectancy += 50; // Pets live longer with each stage, for example
+    addToJournal(`Pet has grown into \${ageNames[pet.ageStage]} stage.`);
+    updatePet();
+}
+
+setInterval(() => {
+    if (pet.alive) {
+        pet.hunger += 1;
+        pet.health -= 0.5;
+        pet.happiness -= 0.5;
+        pet.lifeExpectancy -= 1;
+        if (pet.lifeExpectancy <= 0) die();
+        if (pet.hunger % 20 === 0 && pet.hunger > 0) agePet();
+        updatePet();
+    }
+}, 1000);
+
+updatePet();
 </script>
 
 </body>

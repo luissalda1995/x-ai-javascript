@@ -80,11 +80,6 @@
         transform: scale(1.2);
       }
 
-      .showcase .seat:not(.occupied):hover {
-        cursor: default;
-        transform: scale(1);
-      }
-
       .showcase {
         background: rgba(0, 0, 0, 0.1);
         padding: 5px 10px;
@@ -103,7 +98,7 @@
       }
 
       .showcase li small {
-        margin-left: 2px;
+        margin-left: 10px;
       }
 
       .row {
@@ -126,6 +121,56 @@
       p.text span {
         color: #6feaf6;
       }
+
+      #confirmBooking {
+        background-color: #28a745;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+      }
+
+      #confirmBooking:hover {
+        background-color: #218838;
+      }
+
+      #confirmBooking:active {
+        background-color: #1e7e34;
+      }
+
+      .seat-status {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+      }
+
+      .seat-status li {
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+      }
+
+      .seat-status div {
+        width: 15px;
+        height: 15px;
+        margin-right: 5px;
+      }
+
+      .seat-status .available {
+        background-color: #444451;
+      }
+
+      .seat-status .selected {
+        background-color: #6feaf6;
+      }
+
+      .seat-status .occupied {
+        background-color: #fff;
+      }
     </style>
   </head>
   <body>
@@ -138,6 +183,12 @@
         <option value="9">The Lion King</option>
       </select>
     </div>
+
+    <ul class="seat-status">
+      <li><div class="available"></div><small>Available</small></li>
+      <li><div class="selected"></div><small>Selected</small></li>
+      <li><div class="occupied"></div><small>Occupied</small></li>
+    </ul>
 
     <div class="container">
       <div class="screen"></div>
@@ -162,6 +213,17 @@
         let selectedMovieIndex = $("#movie").prop("selectedIndex");
         let ticketPrice = +$("#movie").val();
 
+        // Save selected movie index and price
+        function setMovieData(movieIndex, moviePrice) {
+          localStorage.setItem("selectedMovieIndex", movieIndex);
+          localStorage.setItem("selectedMoviePrice", moviePrice);
+        }
+
+        // Save total price in localStorage
+        function saveTotalPrice(totalPrice) {
+          localStorage.setItem("totalPrice", totalPrice);
+        }
+
         // Update total and count with dynamic price adjustment
         function updateSelectedCount() {
           const selectedSeats = $(".row .seat.selected");
@@ -181,9 +243,12 @@
             dynamicPrice += ticketPrice * 0.1;
           }
 
+          const totalPrice = (selectedSeatsCount * dynamicPrice).toFixed(2);
           $("#count").text(selectedSeatsCount);
-          $("#total").text((selectedSeatsCount * dynamicPrice).toFixed(2));
+          $("#total").text(totalPrice);
 
+          saveTotalPrice(totalPrice);
+          setMovieData(selectedMovieIndex, ticketPrice);
         }
 
         // Generate seats dynamically
@@ -222,6 +287,7 @@
           }
         }
 
+        // Movie select event
         $("#movie").on("change", function () {
           selectedMovieIndex = $(this).prop("selectedIndex");
           ticketPrice = +$(this).val();
@@ -230,6 +296,7 @@
           updateSelectedCount();
         });
 
+        // Seat click event
         $(".seats-container").on("click", ".seat", function () {
           if (!$(this).hasClass("occupied")) {
             $(this).toggleClass("selected");
@@ -237,6 +304,7 @@
           }
         });
 
+        // Confirm booking event
         $("#confirmBooking").on("click", function () {
           const selectedSeats = $(".row .seat.selected");
 

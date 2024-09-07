@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contract Signing Widget</title>
+
+  <!-- Bootstrap CSS for styling -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    #pdf-container {
+      border: 1px solid #ccc;
+      position: relative;
+      width: 100%;
+      height: 500px; /* Set a fixed height for the scrollable area */
+      overflow-y: auto; /* Enable vertical scrolling */
+      overflow-x: hidden; /* Disable horizontal scrolling */
+    }
+    #pdf-canvas {
+      display: none; /* Hide canvas initially */
+    }
+    .signature-options {
+      display: none; /* Hidden initially */
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 class="my-4">Contract Signing Widget</h1>
+
+  <!-- Document Upload -->
+  <div class="mb-3">
+    <label for="file-upload" class="form-label">Upload PDF Document</label>
+    <input type="file" id="file-upload" class="form-control" accept=".pdf" />
+  </div>
+
+  <!-- Scrollable PDF Container -->
+  <div id="pdf-container">
+    <p>No document uploaded</p> <!-- Placeholder text when PDF is not rendered -->
+  </div>
+
+  <!-- Canvas for PDF drawing -->
+  <canvas id="pdf-canvas"></canvas>
+
+  <!-- Signature Editing Options -->
+  <div id="signature-options" class="signature-options my-4">
+    <div class="row mb-3">
+      <div class="col">
+        <label for="color" class="form-label">Select Signature Color:</label>
+        <select id="color" class="form-select">
+          <option value="black">Black</option>
+          <option value="blue">Blue</option>
+          <option value="red">Red</option>
+        </select>
+      </div>
+    </div>
+    <button id="submit-signature" class="btn btn-success" disabled>Submit Signature</button>
+  </div>
+
+  <!-- Zoom Controls -->
+  <div class="controls my-4">
+    <button id="zoom-in" class="btn btn-outline-primary">Zoom In</button>
+    <button id="zoom-out" class="btn btn-outline-secondary">Zoom Out</button>
+    <button id="add-signature" class="btn btn-warning">Add Signature</button>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div class="dashboard">
+    <h2>Dashboard</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Contract ID</th>
+          <th>Signed Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="dashboard-body">
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- jQuery and Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+
+<script>
+  let pdfContainer = document.getElementById('pdf-container');
+  let pdfCanvas = document.getElementById('pdf-canvas');
+  let signatureOptions = document.getElementById('signature-options');
+  let fileInput = document.getElementById('file-upload');
+  let canvasContext, signatureColor = 'black';
+  let isDrawing = false;
+  let scale = 1, pdfDoc;
+
+  // Handle file upload and render the PDF
+  $('#file-upload').on('change', function (e) {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      const fileReader = new FileReader();
+      fileReader.onload = function () {
+        const pdfData = new Uint8Array(this.result);
+        pdfjsLib.getDocument(pdfData).promise.then(pdf => {
+          pdfDoc = pdf;
+          renderPDF(); // Render PDF initially
+        });
+      };
+      fileReader.readAsArrayBuffer(file);
+    }
+  });
+
+  // Render PDF page in HTML
+  function renderPDF() {
+    pdfDoc.getPage(1).then(page => {
+      let viewport = page.getViewport({ scale: scale });
+      let pdfElement = document.createElement('div');
+      pdfElement.style.width = `${viewport.width}px`;
+      pdfElement.style.height = `${viewport.height}px`;
+      pdfElement.style.position = 'relative';
+
+      pdfContainer.innerHTML = ''; // Clear previous content
+      pdfContainer.appendChild(pdfElement);
+
+      let canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      pdfElement.appendChild(canvas);
+
+      let ctx = canvas.getContext('2d');
+      let renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      };
+      page.render(renderContext);
+    });
+  }
+
+  // Convert to canvas for drawing on PDF when "Add Signature" is clicked
+  $('#add-signature').on('click', function () {
+    pdfDoc.getPage(1).then(page => {
+      let viewport = page.getViewport({ scale: scale });
+      pdfCanvas.width = viewport.width;
+      pdfCanvas.height = viewport.height;
+      canvasContext = pdfCanvas.getContext('2d');
+
+      pdfContainer.style.display = 'none'; // Hide HTML PDF preview
+      pdfCanvas.style.display = 'block'; // Show canvas for signature
+
+      // Render PDF into the canvas
+      let renderContext = {
+        canvasContext: canvasContext,
+        viewport: viewport
+      };
+      page.render(renderContext);
+
+      enableSignatureDrawing(); // Enable drawing over the canvas
+    });
+  });
+
+  // Enable drawing on the canvas
+  function enableSignatureDrawing() {
+    $('#submit-signature').prop('disabled', false); // Enable the submit button
+    signatureOptions.style.display = 'block'; // Show signature options
+
+    pdfCanvas.addEventListener('mousedown', startDrawing);
+    pdfCanvas.addEventListener('mousemove', drawSignature);
+    pdfCanvas.addEventListener('mouseup', stopDrawing);
+  }
+
+  function startDrawing(e) {
+    isDrawing = true;
+    canvasContext.beginPath();
+    canvasContext.moveTo(e.offsetX, e.offsetY);
+  }
+
+  // Drawing the signature on the canvas
+  function drawSignature(e) {
+    if (isDrawing) {
+      canvasContext.strokeStyle = signatureColor;
+      canvasContext.lineWidth = 2;
+      canvasContext.lineTo(e.offsetX, e.offsetY);
+      canvasContext.stroke();
+    }
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+    canvasContext.closePath();
+  }
+
+  // Signature color selection
+  $('#color').on('change', function () {
+    signatureColor = $(this).val();
+  });
+
+  // Zoom functionality
+  $('#zoom-in').on('click', function () {
+    scale += 0.1;
+    renderPDF(); // Re-render the PDF at the new zoom level
+  });
+
+  $('#zoom-out').on('click', function () {
+    if (scale > 0.2) {
+      scale -= 0.1;
+      renderPDF(); // Re-render the PDF at the new zoom level
+    }
+  });
+
+  // Signature Submission
+  $('#submit-signature').on('click', function () {
+    logSignatureEvent(); // Log the signature event to the dashboard
+    clearFields(); // Clear the fields after signature submission
+  });
+
+  // Log the signature submission in the dashboard
+  function logSignatureEvent() {
+    const currentDate = new Date().toLocaleString();
+    let contractID = document.getElementById('dashboard-body').children.length + 1;
+    let newRow = `
+      <tr>
+        <td>${contractID}</td>
+        <td>${currentDate}</td>
+        <td>Signed</td>
+      </tr>
+    `;
+    $('#dashboard-body').append(newRow);
+  }
+
+  // Clear fields after signature submission and reset to empty state
+  function clearFields() {
+    // Clear the canvas
+    canvasContext.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+    // Reset the file input
+    fileInput.value = '';
+
+    // Hide signature options and canvas, and reset the PDF container
+    signatureOptions.style.display = 'none';
+    pdfCanvas.style.display = 'none';
+    pdfContainer.innerHTML = '<p>No document uploaded</p>'; // Show placeholder message
+
+    // Reset form fields (color, etc.)
+    $('#color').val('black');
+    $('#submit-signature').prop('disabled', true);
+  }
+</script>
+
+</body>
+</html>

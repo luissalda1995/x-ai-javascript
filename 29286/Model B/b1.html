@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Sign Widget</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+<style>
+body { font-family: 'Arial', sans-serif; }
+#widget-container { max-width: 800px; margin: auto; }
+#pdf-viewer, #signature-canvas { border: 1px solid #ccc; margin: 10px 0; }
+#color-picker { margin: 10px 0; }
+button { margin: 5px; }
+</style>
+</head>
+<body>
+
+<div id="widget-container">
+    <input type="file" id="pdf-upload" accept=".pdf">
+    <div id="pdf-viewer" style="width: 100%; height: 400px;"></div>
+    <div>
+        <canvas id="signature-canvas" width="400" height="200"></canvas>
+        <button onclick="clearSignature()">Clear</button>
+    </div>
+    <input type="color" id="color-picker" value="#000000">
+    <button onclick="applySignature()">Apply Signature</button>
+    <button onclick="previewSignature()">Preview Signature</button>
+    <div>
+        <button onclick="zoomIn()">+</button>
+        <button onclick="zoomOut()">-</button>
+    </div>
+    <div id="signature-preview"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.6.347/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', (event) => {
+    let pdfDoc = null,
+        pageNum = 1,
+        scale = 1.0,
+        canvas = document.getElementById('signature-canvas'),
+        ctx = canvas.getContext('2d'),
+        signaturePad = new SignaturePad(canvas);
+
+    // Setup color picker
+    document.getElementById('color-picker').addEventListener('change', function(e) {
+        signaturePad.penColor = e.target.value;
+    });
+
+    function renderPage(num) {
+        // Using promise to fetch the page
+        pdfDoc.getPage(num).then(function(page) {
+            let viewport = page.getViewport({ scale: scale });
+            let pdfViewer = document.getElementById('pdf-viewer');
+            let context = pdfViewer.getContext('2d');
+            pdfViewer.height = viewport.height;
+            pdfViewer.width = viewport.width;
+            let renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            page.render(renderContext);
+        });
+    }
+
+    // File upload
+    document.getElementById('pdf-upload').addEventListener('change', function(event) {
+        let file = event.target.files[0];
+        if(file) {
+            let fileReader = new FileReader();
+            fileReader.onload = function() {
+                let typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    pdfDoc = pdf;
+                    renderPage(pageNum);
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+    });
+
+    function zoomIn() {
+        scale += 0.1;
+        renderPage(pageNum);
+    }
+
+    function zoomOut() {
+        if(scale > 0.1) scale -= 0.1;
+        renderPage(pageNum);
+    }
+
+    function clearSignature() {
+        signaturePad.clear();
+    }
+
+    function previewSignature() {
+        if (!signaturePad.isEmpty()) {
+            document.getElementById('signature-preview').innerHTML = '<img src="' + signaturePad.toDataURL() + '" />';
+        }
+    }
+
+    function applySignature() {
+        if (!signaturePad.isEmpty()) {
+            let pdfViewer = document.getElementById('pdf-viewer');
+            let img = new Image();
+            img.src = signaturePad.toDataURL();
+            img.onload = function() {
+                pdfViewer.getContext('2d').drawImage(img, 10, 10); // Example position
+            }
+        } else {
+            alert('Please provide a signature first.');
+        }
+    }
+
+    // Expose for debugging or further manipulation
+    window.zoomIn = zoomIn;
+    window.zoomOut = zoomOut;
+    window.applySignature = applySignature;
+    window.previewSignature = previewSignature;
+});
+</script>
+</body>
+</html>

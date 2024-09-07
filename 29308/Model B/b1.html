@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Figure Eight Racer</title>
+<style>
+    body { margin: 0; overflow: hidden; }
+    canvas { background: #87CEEB; display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.tabIndex = 1; // To allow keyboard events
+canvas.focus();
+
+// Game variables
+let player = {x: 100, y: 300, speed: 0, width: 30, height: 50, color: 'blue'};
+let enemies = [];
+let score = 0;
+let gameOver = false;
+let trackWidth = 100;
+
+// Track drawing function (simplified for figure-eight)
+function drawTrack() {
+    ctx.fillStyle = 'green';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = trackWidth;
+    ctx.beginPath();
+    ctx.moveTo(400, 0);
+    ctx.lineTo(400, 600);
+    ctx.moveTo(0, 300);
+    ctx.lineTo(800, 300);
+    ctx.stroke();
+}
+
+function drawCar(car) {
+    ctx.fillStyle = car.color;
+    ctx.fillRect(car.x, car.y, car.width, car.height);
+}
+
+function update() {
+    if (gameOver) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawTrack();
+
+    // Update player position
+    player.y += player.speed;
+    if (player.y < 0) player.y = canvas.height;
+    if (player.y > canvas.height) player.y = 0;
+
+    // Enemy movement and creation
+    if (Math.random() < 0.02) {
+        enemies.push({x: 700, y: -50, speed: 2 + score * 0.1, width: 30, height: 50, color: 'red'});
+    }
+    enemies.forEach((enemy, index) => {
+        enemy.y += enemy.speed;
+        if (enemy.y > canvas.height) enemies.splice(index, 1);
+        drawCar(enemy);
+
+        // Collision detection
+        if (player.x < enemy.x + enemy.width &&
+            player.x + player.width > enemy.x &&
+            player.y < enemy.y + enemy.height &&
+            player.y + player.height > enemy.y) {
+            gameOver = true;
+        }
+    });
+
+    drawCar(player);
+
+    // Score
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.fillText(`Score: ${score}`, 10, 30);
+
+    if (!gameOver) requestAnimationFrame(update);
+}
+
+// Controls
+canvas.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowUp') player.speed += 0.1;
+    if (e.key === 'ArrowDown') player.speed -= 0.1;
+    if (gameOver && e.key === 'r') {
+        score = 0;
+        player.speed = 0;
+        enemies = [];
+        gameOver = false;
+        update();
+    }
+    // Score increase on lap completion (simplified)
+    if (player.y < 10 && player.speed > 0) score++;
+});
+
+// Start the game
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speed Racer Game</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css?family=Press+Start+2P");
+
+      body {
+        margin: 0;
+        padding: 0;
+        color: #f0f0f0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #181818;
+      }
+
+      button {
+        outline: none;
+        cursor: pointer;
+        border: none;
+        box-shadow: 3px 5px 0px 0px rgba(0, 0, 0, 0.75);
+      }
+
+      a,
+      a:visited {
+        color: inherit;
+      }
+
+      #score {
+        position: absolute;
+        top: 80px;
+        left: 80px;
+        font-family: "Press Start 2P", cursive;
+        font-size: 1em;
+        color: black;
+        transform: translate(-50%, -50%);
+        opacity: 0.9;
+        max-width: 100px;
+        text-align: center;
+        line-height: 1.6em;
+      }
+
+      #controls {
+        position: absolute;
+        bottom: 50px;
+        left: 50px;
+        display: none;
+      }
+
+      #controls #buttons {
+        width: 80px;
+        opacity: 0;
+        transition: opacity 2s;
+      }
+
+      #controls #instructions {
+        margin-left: 20px;
+        max-width: 300px;
+        background-color: rgba(50, 50, 50, 0.8);
+        padding: 20px;
+        opacity: 0;
+        transition: opacity 2s;
+      }
+
+      #controls button {
+        width: 100%;
+        height: 40px;
+        background-color: #ff6666;
+        border: 1px solid #333;
+        margin-bottom: 10px;
+      }
+
+      #results {
+        position: absolute;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+        background-color: rgba(30, 30, 30, 0.85);
+        display: none;
+        z-index: 51;
+      }
+
+      #results .content {
+        max-width: 350px;
+        padding: 50px;
+        border-radius: 20px;
+        background-color: #222;
+      }
+
+      @media (min-height: 425px) {
+        #score {
+          font-size: 1.5em;
+          max-width: 150px;
+        }
+
+        #controls {
+          display: flex;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="score">Press UP to Start</div>
+
+    <div id="controls">
+      <div id="buttons">
+        <button id="accelerate">
+          <svg width="30" height="30" viewBox="0 0 10 10">
+            <g transform="rotate(0, 5,5)">
+              <path d="M5,4 L7,6 L3,6 L5,4" />
+            </g>
+          </svg>
+        </button>
+        <button id="decelerate">
+          <svg width="30" height="30" viewBox="0 0 10 10">
+            <g transform="rotate(180, 5,5)">
+              <path d="M5,4 L7,6 L3,6 L5,4" />
+            </g>
+          </svg>
+        </button>
+      </div>
+      <div id="instructions">
+        Press UP to begin. Avoid crashing into other cars by accelerating or
+        decelerating with the UP and DOWN keys.
+      </div>
+    </div>
+
+    <div id="results">
+      <div class="content">
+        <h1>Crash! You lost the race!</h1>
+        <p>Press R to restart the race.</p>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r126/three.min.js"></script>
+
+    <script>
+      window.focus(); // Capture keys right away
+
+      // Utility functions
+      const randomChoice = (array) =>
+        array[Math.floor(Math.random() * array.length)];
+
+      const calculateDistance = (coord1, coord2) => {
+        const dx = coord2.x - coord1.x;
+        const dy = coord2.y - coord1.y;
+        return Math.sqrt(dx ** 2 + dy ** 2);
+      };
+
+      // Game constants
+      const carColors = [0xff5733, 0x28a745, 0x17a2b8, 0x007bff];
+      const colorScheme = {
+        roadGreen: "#77dd77",
+        trackDark: "#2f4f4f",
+        edgeStone: "#404040",
+      };
+      const materials = {
+        wheel: new THREE.MeshLambertMaterial({ color: 0x1f1f1f }),
+        treeBark: new THREE.MeshLambertMaterial({ color: 0x8b4513 }),
+        treeLeaves: new THREE.MeshLambertMaterial({ color: 0x228b22 }),
+      };
+      const wheelGeometry = new THREE.BoxBufferGeometry(12, 33, 12);
+
+      // Configuration
+      const config = {
+        displayHitZones: false,
+        useShadows: true,
+        addCurbs: true,
+        displayGrid: false,
+      };
+
+      // Game variables
+      let raceScore, playerMovedAngle, speedingUp, slowingDown;
+      const movementSpeed = 0.002;
+      const initialAngle = Math.PI;
+      let enemyCars = [],
+        raceReady,
+        previousTimestamp;
+
+      // Track dimensions
+      const roadRadius = 225;
+      const roadWidth = 45;
+      const innerRadius = roadRadius - roadWidth;
+      const outerRadius = roadRadius + roadWidth;
+      const firstArcAngle = (1 / 3) * Math.PI;
+      const deltaY = Math.sin(firstArcAngle) * innerRadius;
+      const secondArcAngle = Math.asin(deltaY / outerRadius);
+      const roadCenterX =
+        (Math.cos(firstArcAngle) * innerRadius +
+          Math.cos(secondArcAngle) * outerRadius) /
+        2;
+      const thirdArcAngle = Math.acos(roadCenterX / innerRadius);
+      const fourthArcAngle = Math.acos(roadCenterX / outerRadius);
+
+      // DOM Elements
+      const scoreBoard = document.getElementById("score");
+      const buttonsPanel = document.getElementById("buttons");
+      const gameInstructions = document.getElementById("instructions");
+      const gameResult = document.getElementById("results");
+      const accelerateBtn = document.getElementById("accelerate");
+      const decelerateBtn = document.getElementById("decelerate");
+
+      // Initialize game
+      setTimeout(() => {
+        if (raceReady) gameInstructions.style.opacity = 1;
+        buttonsPanel.style.opacity = 1;
+      }, 4000);
+
+      // Set up Three.js camera, scene, lights, and renderer
+      const gameCamera = initializeCamera();
+      const gameScene = new THREE.Scene();
+      const gameRenderer = initializeRenderer();
+      const racerCar = buildRacerCar();
+      gameScene.add(racerCar);
+
+      // Setup initial map and lighting
+      generateRaceTrack();
+      addSceneLighting();
+      resetRace();
+
+      // Event listeners for button and key interactions
+      setupControlListeners();
+      addResizeListener();
+
+      // Functions
+
+      function resetRace() {
+        playerMovedAngle = 0;
+        raceScore = 0;
+        scoreBoard.innerText = "Press UP to Start";
+        clearEnemyCars();
+        gameResult.style.display = "none";
+        moveRacerCar(0);
+        gameRenderer.render(gameScene, gameCamera);
+        raceReady = true;
+      }
+
+      function startRace() {
+        if (raceReady) {
+          raceReady = false;
+          scoreBoard.innerText = 0;
+          gameInstructions.style.opacity = 0;
+          gameRenderer.setAnimationLoop(renderRace);
+        }
+      }
+
+      function initializeCamera() {
+        const aspectRatio = window.innerWidth / window.innerHeight;
+        const cameraWidth = 960;
+        const cameraHeight = cameraWidth / aspectRatio;
+
+        const camera = new THREE.OrthographicCamera(
+          cameraWidth / -2,
+          cameraWidth / 2,
+          cameraHeight / 2,
+          cameraHeight / -2,
+          50,
+          700
+        );
+        camera.position.set(0, -210, 300);
+        camera.lookAt(0, 0, 0);
+        return camera;
+      }
+
+      function initializeRenderer() {
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          powerPreference: "high-performance",
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (config.useShadows) renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        return renderer;
+      }
+
+      function addSceneLighting() {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        gameScene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight.position.set(100, -300, 300);
+        directionalLight.castShadow = true;
+        gameScene.add(directionalLight);
+      }
+
+      function clearEnemyCars() {
+        enemyCars.forEach((car) => {
+          gameScene.remove(car.mesh);
+          if (car.mesh.userData.hitZone1)
+            gameScene.remove(car.mesh.userData.hitZone1);
+          if (car.mesh.userData.hitZone2)
+            gameScene.remove(car.mesh.userData.hitZone2);
+        });
+        enemyCars = [];
+      }
+
+      function generateRaceTrack() {
+        const trackWidth = 960;
+        const trackHeight = trackWidth * 2;
+        const markingsTexture = getTrackMarkings(trackWidth, trackHeight);
+        const planeGeometry = new THREE.PlaneBufferGeometry(
+          trackWidth,
+          trackHeight
+        );
+        const planeMaterial = new THREE.MeshLambertMaterial({
+          map: markingsTexture,
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.receiveShadow = true;
+        gameScene.add(plane);
+
+        // Add islands and curbs
+        const fieldMesh = createField(trackWidth, trackHeight);
+        gameScene.add(fieldMesh);
+      }
+
+      function getTrackMarkings(trackWidth, trackHeight) {
+        const canvas = document.createElement("canvas");
+        canvas.width = trackWidth;
+        canvas.height = trackHeight;
+        const context = canvas.getContext("2d");
+
+        context.fillStyle = colorScheme.trackDark;
+        context.fillRect(0, 0, trackWidth, trackHeight);
+
+        context.lineWidth = 2;
+        context.strokeStyle = "#fafafa";
+        context.setLineDash([10, 14]);
+
+        drawTrackCurves(context, trackWidth, trackHeight, roadRadius);
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function drawTrackCurves(context, trackWidth, trackHeight, radius) {
+        context.beginPath();
+        context.arc(
+          trackWidth / 2 - roadCenterX,
+          trackHeight / 2,
+          radius,
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+
+        context.beginPath();
+        context.arc(
+          trackWidth / 2 + roadCenterX,
+          trackHeight / 2,
+          radius,
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+      }
+
+      function createField(trackWidth, trackHeight) {
+        const curbsTexture = getCurbsTexture(trackWidth, trackHeight);
+
+        const fieldGeometry = new THREE.ExtrudeBufferGeometry(
+          [
+            createLeftIsland(),
+            createRightIsland(),
+            createMiddleIsland(),
+            createOuterField(trackWidth, trackHeight),
+          ],
+          { depth: 6, bevelEnabled: false }
+        );
+
+        return new THREE.Mesh(fieldGeometry, [
+          new THREE.MeshLambertMaterial({
+            color: !config.addCurbs && colorScheme.roadGreen,
+            map: config.addCurbs && curbsTexture,
+          }),
+          new THREE.MeshLambertMaterial({ color: 0x3b3b3b }),
+        ]);
+      }
+
+      function createLeftIsland() {
+        const island = new THREE.Shape();
+        island.absarc(
+          -roadCenterX, // Position of the island on the X axis
+          0, // Y axis
+          innerRadius, // Radius of the inner island
+          firstArcAngle, // Start angle
+          -firstArcAngle, // End angle
+          false // Counterclockwise
+        );
+        island.absarc(
+          roadCenterX, // Position on X axis
+          0, // Y axis
+          outerRadius, // Radius of the outer island
+          Math.PI + secondArcAngle, // Start angle
+          Math.PI - secondArcAngle, // End angle
+          true // Clockwise
+        );
+        return island;
+      }
+
+      function createRightIsland() {
+        const island = new THREE.Shape();
+        island.absarc(
+          roadCenterX, // Position of the island on the X axis
+          0, // Y axis
+          innerRadius, // Radius of the inner island
+          Math.PI - firstArcAngle, // Start angle
+          Math.PI + firstArcAngle, // End angle
+          true // Clockwise
+        );
+        island.absarc(
+          -roadCenterX, // Position on X axis
+          0, // Y axis
+          outerRadius, // Radius of the outer island
+          -secondArcAngle, // Start angle
+          secondArcAngle, // End angle
+          false // Counterclockwise
+        );
+        return island;
+      }
+
+      function createMiddleIsland() {
+        const island = new THREE.Shape();
+        island.absarc(
+          -roadCenterX, // Position on the X axis
+          0, // Y axis
+          innerRadius, // Radius of the inner island
+          thirdArcAngle, // Start angle
+          -thirdArcAngle, // End angle
+          true // Clockwise
+        );
+        island.absarc(
+          roadCenterX, // Position on X axis
+          0, // Y axis
+          innerRadius, // Radius of the outer island
+          Math.PI + thirdArcAngle, // Start angle
+          Math.PI - thirdArcAngle, // End angle
+          true // Counterclockwise
+        );
+        return island;
+      }
+
+      function createOuterField(trackWidth, trackHeight) {
+        const field = new THREE.Shape();
+        field.moveTo(-trackWidth / 2, -trackHeight / 2); // Move to top-left corner
+        field.lineTo(0, -trackHeight / 2); // Line to middle-top
+
+        field.absarc(
+          -roadCenterX, // Center of the outer field on X axis
+          0, // Y axis
+          outerRadius, // Outer track radius
+          -fourthArcAngle, // Start angle
+          fourthArcAngle, // End angle
+          true // Clockwise
+        );
+
+        field.absarc(
+          roadCenterX, // Position on the X axis
+          0, // Y axis
+          outerRadius, // Radius of the outer track
+          Math.PI - fourthArcAngle, // Start angle
+          Math.PI + fourthArcAngle, // End angle
+          true // Counterclockwise
+        );
+
+        field.lineTo(0, -trackHeight / 2); // Line back to the middle-top
+        field.lineTo(trackWidth / 2, -trackHeight / 2); // Line to top-right corner
+        field.lineTo(trackWidth / 2, trackHeight / 2); // Line to bottom-right corner
+        field.lineTo(-trackWidth / 2, trackHeight / 2); // Line to bottom-left corner
+        return field;
+      }
+
+      function getCurbsTexture(trackWidth, trackHeight) {
+        const canvas = document.createElement("canvas");
+        canvas.width = trackWidth;
+        canvas.height = trackHeight;
+        const context = canvas.getContext("2d");
+
+        context.fillStyle = colorScheme.roadGreen;
+        context.fillRect(0, 0, trackWidth, trackHeight);
+
+        context.lineWidth = 65;
+        context.strokeStyle = "#c0c0c0";
+
+        drawIslandCurbs(
+          context,
+          trackWidth,
+          trackHeight,
+          innerRadius,
+          outerRadius
+        );
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function drawIslandCurbs(
+        context,
+        trackWidth,
+        trackHeight,
+        innerRadius,
+        outerRadius
+      ) {
+        context.beginPath();
+        context.arc(
+          trackWidth / 2 - roadCenterX,
+          trackHeight / 2,
+          innerRadius,
+          firstArcAngle,
+          -firstArcAngle
+        );
+        context.arc(
+          trackWidth / 2 + roadCenterX,
+          trackHeight / 2,
+          outerRadius,
+          Math.PI + secondArcAngle,
+          Math.PI - secondArcAngle,
+          true
+        );
+        context.stroke();
+      }
+
+      function buildRacerCar() {
+        const car = new THREE.Group();
+        const carColor = randomChoice(carColors);
+
+        const main = new THREE.Mesh(
+          new THREE.BoxBufferGeometry(60, 30, 15),
+          new THREE.MeshLambertMaterial({ color: carColor })
+        );
+        main.position.z = 12;
+        car.add(main);
+
+        return car;
+      }
+
+      // Control event listeners
+      function setupControlListeners() {
+        accelerateBtn.addEventListener("mousedown", () => {
+          startRace();
+          speedingUp = true;
+        });
+        decelerateBtn.addEventListener("mousedown", () => {
+          startRace();
+          slowingDown = true;
+        });
+        accelerateBtn.addEventListener("mouseup", () => (speedingUp = false));
+        decelerateBtn.addEventListener("mouseup", () => (slowingDown = false));
+
+        window.addEventListener("keydown", handleKeyPress);
+        window.addEventListener("keyup", handleKeyRelease);
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "ArrowUp") {
+          startRace();
+          speedingUp = true;
+        } else if (event.key === "ArrowDown") {
+          slowingDown = true;
+        } else if (event.key.toLowerCase() === "r") {
+          resetRace();
+        }
+      }
+
+      function handleKeyRelease(event) {
+        if (event.key === "ArrowUp") speedingUp = false;
+        if (event.key === "ArrowDown") slowingDown = false;
+      }
+
+      function addResizeListener() {
+        window.addEventListener("resize", () => {
+          const newAspectRatio = window.innerWidth / window.innerHeight;
+          const adjustedCameraHeight = cameraWidth / newAspectRatio;
+
+          gameCamera.top = adjustedCameraHeight / 2;
+          gameCamera.bottom = adjustedCameraHeight / -2;
+          gameCamera.updateProjectionMatrix();
+
+          gameRenderer.setSize(window.innerWidth, window.innerHeight);
+          gameRenderer.render(gameScene, gameCamera);
+        });
+      }
+
+      function renderRace(timestamp) {
+        if (!previousTimestamp) previousTimestamp = timestamp;
+        const timeDelta = timestamp - previousTimestamp;
+
+        moveRacerCar(timeDelta);
+        updateRaceScore();
+        spawnNewCars();
+        moveEnemyCars(timeDelta);
+        checkForCollision();
+
+        gameRenderer.render(gameScene, gameCamera);
+        previousTimestamp = timestamp;
+      }
+
+      function moveRacerCar(timeDelta) {
+        const currentSpeed = speedingUp
+          ? movementSpeed * 2
+          : slowingDown
+          ? movementSpeed * 0.5
+          : movementSpeed;
+        playerMovedAngle -= currentSpeed * timeDelta;
+
+        const totalAngle = initialAngle + playerMovedAngle;
+        const playerX = Math.cos(totalAngle) * roadRadius - roadCenterX;
+        const playerY = Math.sin(totalAngle) * roadRadius;
+
+        racerCar.position.x = playerX;
+        racerCar.position.y = playerY;
+        racerCar.rotation.z = totalAngle - Math.PI / 2;
+      }
+
+      function updateRaceScore() {
+        const laps = Math.floor(Math.abs(playerMovedAngle) / (Math.PI * 2));
+        if (laps !== raceScore) {
+          raceScore = laps;
+          scoreBoard.innerText = raceScore;
+        }
+      }
+
+      function spawnNewCars() {
+        const laps = Math.floor(Math.abs(playerMovedAngle) / (Math.PI * 2));
+        if (enemyCars.length < (laps + 1) / 5) {
+          spawnCar();
+        }
+      }
+
+      function moveEnemyCars(timeDelta) {
+        enemyCars.forEach((car) => {
+          const moveAngle = car.clockwise
+            ? -movementSpeed * timeDelta * car.speed
+            : movementSpeed * timeDelta * car.speed;
+          car.angle += moveAngle;
+
+          const carX = Math.cos(car.angle) * roadRadius + roadCenterX;
+          const carY = Math.sin(car.angle) * roadRadius;
+          const rotation =
+            car.angle + (car.clockwise ? -Math.PI / 2 : Math.PI / 2);
+
+          car.mesh.position.x = carX;
+          car.mesh.position.y = carY;
+          car.mesh.rotation.z = rotation;
+        });
+      }
+
+      function spawnCar() {
+        const carMesh = buildRacerCar();
+        gameScene.add(carMesh);
+
+        enemyCars.push({
+          mesh: carMesh,
+          type: "car",
+          speed: Math.random() * (2 - 1) + 1,
+          clockwise: Math.random() >= 0.5,
+          angle: Math.PI / 2,
+        });
+      }
+
+      function checkForCollision() {
+        const collision = enemyCars.some((car) => {
+          return calculateDistance(racerCar.position, car.mesh.position) < 40;
+        });
+
+        if (collision) {
+          gameResult.style.display = "flex";
+          gameRenderer.setAnimationLoop(null);
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hot or Cold Grid Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+    .grid-container {
+      display: grid;
+      gap: 10px;
+    }
+    .btn {
+      padding: 20px;
+      background-color: #b0c4de; /* Cold color */
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .hot {
+      background-color: #ff6347 !important; /* Hot red */
+    }
+    .warm {
+      background-color: #ffa500 !important; /* Warm orange */
+    }
+    .cold {
+      background-color: #87cefa !important; /* Cold blue */
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #38a169;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      font-weight: bold;
+      z-index: 1000;
+      animation: fadeOut 2s forwards;
+    }
+    @keyframes fadeOut {
+      0% {
+        opacity: 1;
+      }
+      80% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="max-w-3xl mx-auto mt-10 p-5 bg-white shadow-lg rounded-lg">
+    <div class="text-center mb-4">
+      <h1 class="text-3xl font-bold">Hot or Cold Grid Game</h1>
+      <p class="mt-2">Level: <span id="level">1</span> | Lives: <span id="lives">10</span> | Time: <span id="timer">30</span>s</p>
+    </div>
+    
+    <div id="grid" class="grid-container grid-cols-5"></div>
+    
+    <div class="mt-5 text-center">
+      <button id="restart-btn" class="bg-blue-500 text-white py-2 px-4 rounded hidden">Restart</button>
+    </div>
+  </div>
+
+  <!-- Notification container -->
+  <div id="notification-container"></div>
+
+  <script>
+    const gridContainer = document.getElementById('grid');
+    const levelDisplay = document.getElementById('level');
+    const livesDisplay = document.getElementById('lives');
+    const timerDisplay = document.getElementById('timer');
+    const restartBtn = document.getElementById('restart-btn');
+    const notificationContainer = document.getElementById('notification-container');
+
+    let level = 1;
+    let lives = 10;  // Starting lives at 10
+    let gridSize = 5; // Start grid size at 5x5
+    let correctButton = null;
+    let timeLimit = 30; // Initial time limit for level 1
+    let timerInterval;
+    let correctButtonIndex = 0;
+    let visitedIndices = []; // Track visited or clicked grids
+    
+    const generateGrid = (size) => {
+      gridContainer.innerHTML = '';
+      gridContainer.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+
+      visitedIndices = [];
+      correctButtonIndex = Math.floor(Math.random() * size * size); // Random initial position of the correct button
+
+      for (let i = 0; i < size * size; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.setAttribute('data-index', i);
+        btn.onclick = () => handleClick(i, size);
+        gridContainer.appendChild(btn);
+      }
+    }
+
+    const handleClick = (index, size) => {
+      if (index === correctButtonIndex) {
+        showNotification('Correct! You found the button.');
+        nextLevel();
+      } else {
+        if (!visitedIndices.includes(index)) {
+          lives--;
+          livesDisplay.textContent = lives;
+          visitedIndices.push(index); // Mark this button as clicked
+          if (lives === 0) {
+            endGame();
+          }
+        }
+        updateButtonFeedback(index, size);
+      }
+    }
+
+    const updateButtonFeedback = (index, size) => {
+      const row = Math.floor(index / size);
+      const col = index % size;
+      const correctRow = Math.floor(correctButtonIndex / size);
+      const correctCol = correctButtonIndex % size;
+      
+      const distance = Math.abs(row - correctRow) + Math.abs(col - correctCol);
+      const maxDistance = size * 2;
+      
+      const button = gridContainer.children[index];
+      if (distance < maxDistance * 0.25) {
+        button.classList.add('hot');
+      } else if (distance < maxDistance * 0.5) {
+        button.classList.add('warm');
+      } else {
+        button.classList.add('cold');
+      }
+    }
+
+    const moveCorrectButton = () => {
+      const possibleMoves = [
+        -1, 1, -gridSize, gridSize // left, right, up, down
+      ];
+
+      // Filter out moves that would move the button out of bounds or into visited grids
+      const validMoves = possibleMoves.filter(move => {
+        const newIndex = correctButtonIndex + move;
+        const newRow = Math.floor(newIndex / gridSize);
+        const oldRow = Math.floor(correctButtonIndex / gridSize);
+
+        return newIndex >= 0 && newIndex < gridSize * gridSize // Inside grid boundaries
+               && Math.abs(newRow - oldRow) <= 1 // Don't jump rows when moving left or right
+               && !visitedIndices.includes(newIndex); // Don't move into a clicked button
+      });
+
+      // If there are valid moves, randomly pick one and update the correct button
+      if (validMoves.length > 0) {
+        const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+        const newCorrectButtonIndex = correctButtonIndex + move;
+        correctButtonIndex = newCorrectButtonIndex;
+      }
+    }
+
+    const nextLevel = () => {
+      clearInterval(timerInterval);
+      level++;
+      levelDisplay.textContent = level;
+      gridSize += 2;
+      timeLimit -= 5; // Decrease time limit by 5 seconds
+      timerDisplay.textContent = timeLimit;
+      lives = 10;  // Reset lives to 10 for the next level
+      livesDisplay.textContent = lives;
+      generateGrid(gridSize);
+      startTimer();
+      startCorrectButtonMovement(); // Start moving the correct button
+    }
+
+    const startCorrectButtonMovement = () => {
+      setInterval(() => {
+        moveCorrectButton();
+      }, 2000); // Move the correct button every 2 seconds
+    }
+
+    const startTimer = () => {
+      let timeRemaining = timeLimit;
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        timerDisplay.textContent = timeRemaining;
+        if (timeRemaining === 0) {
+          clearInterval(timerInterval);
+          endGame();
+        }
+      }, 1000);
+    }
+
+    const endGame = () => {
+      clearInterval(timerInterval);
+      showNotification(`Game Over! You reached level ${level}.`);
+      gridContainer.innerHTML = '<p class="text-center text-xl">Game Over! You reached level ' + level + '.</p>';
+      restartBtn.classList.remove('hidden');
+    }
+
+    const showNotification = (message) => {
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.textContent = message;
+      notificationContainer.appendChild(notification);
+
+      setTimeout(() => {
+        notification.remove();
+      }, 2000); // Notification disappears after 2 seconds
+    }
+
+    restartBtn.onclick = () => {
+      level = 1;
+      lives = 10; // Reset lives to 10 for a new game
+      gridSize = 5; // Reset grid size to 5x5
+      timeLimit = 30; // Reset time limit to 30s for the first level
+      levelDisplay.textContent = level;
+      livesDisplay.textContent = lives;
+      timerDisplay.textContent = timeLimit;
+      restartBtn.classList.add('hidden');
+      generateGrid(gridSize);
+      startTimer();
+      startCorrectButtonMovement(); // Start moving the correct button
+    }
+
+    generateGrid(gridSize);
+    startTimer();
+    startCorrectButtonMovement(); // Start moving the correct button on the first load
+  </script>
+</body>
+</html>

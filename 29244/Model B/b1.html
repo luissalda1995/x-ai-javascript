@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot or Cold Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .grid-button {
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-center h-screen">
+    <div id="game-container" class="p-4">
+        <h1 class="text-4xl mb-4 text-center">Hot or Cold</h1>
+        <div id="grid" class="grid grid-cols-5 gap-1 mb-4"></div>
+        <div class="text-center mb-4">
+            <button id="start" class="px-4 py-2 bg-blue-500 text-white rounded">Start Game</button>
+            <div id="timer" class="mt-2 text-lg">Time: <span id="time-left">60</span>s</div>
+        </div>
+        <div id="notification" class="text-center text-xl"></div>
+    </div>
+
+    <script>
+        const gridSize = 5;
+        let currentLevel = 1;
+        let timeLimit = 60;
+        let lives = 3;
+        let target = null;
+        let grid = document.getElementById('grid');
+        let timerDisplay = document.getElementById('time-left');
+        let notification = document.getElementById('notification');
+        let timer;
+
+        function createGrid() {
+            grid.innerHTML = '';
+            grid.className = `grid grid-cols-${gridSize} gap-1 mb-4`;
+            for(let i = 0; i < gridSize * gridSize; i++) {
+                let button = document.createElement('button');
+                button.className = 'grid-button bg-white w-full h-16 rounded shadow';
+                button.onclick = () => checkButton(i);
+                grid.appendChild(button);
+            }
+        }
+
+        function setTarget() {
+            target = Math.floor(Math.random() * (gridSize * gridSize));
+        }
+
+        function checkButton(index) {
+            if (lives <= 0) return;
+
+            let distance = Math.abs(target - index);
+            let maxDistance = (gridSize * gridSize) / 2;  // rough max distance in grid
+            let button = grid.children[index];
+
+            if (index === target) {
+                button.classList.add('bg-green-500');
+                winGame();
+            } else {
+                let temp = (1 - (distance / maxDistance));
+                if (temp > 0.7) button.classList.add('bg-red-500'); // Hot
+                else if (temp > 0.4) button.classList.add('bg-yellow-500'); // Warm
+                else button.classList.add('bg-blue-500'); // Cold
+                lives--;
+                if (lives === 0) loseGame();
+            }
+        }
+
+        function moveTarget() {
+            let newPos = target;
+            while(newPos === target || grid.children[newPos].disabled) {
+                let move = Math.floor(Math.random() * 4); // 0: up, 1: right, 2: down, 3: left
+                switch(move) {
+                    case 0: if (newPos >= gridSize) newPos -= gridSize; break;
+                    case 1: if (newPos % gridSize < gridSize - 1) newPos++; break;
+                    case 2: if (newPos < gridSize * (gridSize - 1)) newPos += gridSize; break;
+                    case 3: if (newPos % gridSize > 0) newPos--; break;
+                }
+            }
+            target = newPos;
+        }
+
+        function startGame() {
+            lives = 3;
+            createGrid();
+            setTarget();
+            startTimer();
+        }
+
+        function startTimer() {
+            let timeLeft = timeLimit;
+            timer = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    loseGame();
+                }
+            }, 1000);
+        }
+
+        function winGame() {
+            clearInterval(timer);
+            notification.textContent = 'You Win!';
+            currentLevel++;
+            gridSize += 2;
+            timeLimit = Math.max(10, timeLimit - 5); // Ensure time doesn't go too low
+            setTimeout(() => {
+                startGame();
+                notification.textContent = '';
+            }, 2000);
+        }
+
+        function loseGame() {
+            clearInterval(timer);
+            notification.textContent = 'Game Over!';
+            setTimeout(() => {
+                currentLevel = 1;
+                gridSize = 5;
+                timeLimit = 60;
+                startGame();
+                notification.textContent = '';
+            }, 2000);
+        }
+
+        document.getElementById('start').onclick = startGame;
+        startGame();
+    </script>
+</body>
+</html>

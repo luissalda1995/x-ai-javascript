@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot or Cold Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .grid-item {
+            @apply w-12 h-12 flex items-center justify-center border border-gray-300 m-1;
+        }
+        .hot { @apply bg-red-500; }
+        .warm { @apply bg-orange-300; }
+        .cold { @apply bg-blue-300; }
+        .object { @apply bg-green-500; }
+        .hidden { @apply bg-gray-200; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div id="game" class="max-w-3xl mx-auto">
+        <h1 class="text-2xl text-center mb-4">Find the Object!</h1>
+        <div id="feedback" class="text-center text-xl mb-4"></div>
+        <div id="grid" class="flex flex-wrap justify-center"></div>
+        <div class="mt-4 text-center">
+            <span id="timer" class="font-bold">Time: 60s</span> | 
+            <span id="level">Level: 1</span>
+        </div>
+    </div>
+
+    <script>
+    const grid = document.getElementById('grid');
+    let size = 5, level = 1, time = 60, objectPosition, currentGrid;
+
+    function setupGame() {
+        grid.innerHTML = '';
+        currentGrid = Array(size * size).fill('hidden');
+        objectPosition = Math.floor(Math.random() * currentGrid.length);
+        currentGrid[objectPosition] = 'object';
+        for(let i = 0; i < currentGrid.length; i++) {
+            let div = document.createElement('div');
+            div.className = `grid-item ${currentGrid[i]}`;
+            div.onclick = () => checkPosition(i);
+            grid.appendChild(div);
+        }
+        startTimer();
+    }
+
+    function checkPosition(index) {
+        if (currentGrid[index] === 'object') {
+            winGame();
+            return;
+        }
+        let distance = Math.abs(index - objectPosition);
+        if (distance < 2) grid.children[index].classList.add('hot');
+        else if (distance < size) grid.children[index].classList.add('warm');
+        else grid.children[index].classList.add('cold');
+    }
+
+    function winGame() {
+        clearTimeout(window.gameTimer);
+        document.getElementById('feedback').innerText = 'You found it!';
+        level++;
+        size += 2;
+        time = Math.max(10, time - 5); // Ensure time doesn't go too low
+        setTimeout(setupGame, 2000);
+    }
+
+    function loseGame() {
+        document.getElementById('feedback').innerText = 'Game Over!';
+        level = 1;
+        size = 5;
+        time = 60;
+        setTimeout(setupGame, 2000);
+    }
+
+    function startTimer() {
+        let timerElement = document.getElementById('timer');
+        window.gameTimer = setInterval(() => {
+            time--;
+            timerElement.innerText = `Time: ${time}s`;
+            if (time <= 0) {
+                clearInterval(window.gameTimer);
+                loseGame();
+            }
+        }, 1000);
+    }
+
+    document.getElementById('level').innerText = `Level: ${level}`;
+    setupGame();
+    </script>
+</body>
+</html>

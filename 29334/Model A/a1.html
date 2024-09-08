@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Widget</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .chat-bubble-left { 
+            background-color: #e5e7eb; 
+            align-self: flex-start; 
+        }
+        .chat-bubble-right { 
+            background-color: #90cdf4; 
+            align-self: flex-end; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+<div class="container mx-auto flex flex-col md:flex-row">
+  <!-- Input and Controls -->
+  <div class="md:w-1/2 p-4">
+    <textarea id="textInput" class="w-full p-2 border rounded" rows="5" placeholder="Enter text here..."></textarea>
+    <div class="mt-2">
+      <button id="recordBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Record</button>
+      <select id="voiceSelect" class="ml-2"></select>
+    </div>
+    <div class="mt-2">
+      <label>Rate: <input id="rate" type="range" min="0.5" max="2" value="1" step="0.1"></label>
+      <label>Pitch: <input id="pitch" type="range" min="0" max="2" value="1" step="0.1"></label>
+      <label>Volume: <input id="volume" type="range" min="0" max="1" value="1" step="0.1"></label>
+    </div>
+    <button id="speakBtn" class="mt-4 bg-green-500 text-white px-4 py-2 rounded">Speak</button>
+    <span id="charCount" class="ml-2">0 characters</span>
+  </div>
+
+  <!-- Dialogue Display -->
+  <div id="dialogue" class="md:w-1/2 p-4"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', (event) => {
+    const textInput = document.getElementById('textInput');
+    const recordBtn = document.getElementById('recordBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const rate = document.getElementById('rate');
+    const pitch = document.getElementById('pitch');
+    const volume = document.getElementById('volume');
+    const charCount = document.getElementById('charCount');
+    const dialogue = document.getElementById('dialogue');
+    
+    let voices = [];
+    let recognition;
+
+    // Populate voices list
+    function populateVoiceList() {
+        voices = speechSynthesis.getVoices().filter(voice => voice.lang.includes('es'));
+        voiceSelect.innerHTML = voices.map(voice => `<option value="${voice.name}">${voice.name}</option>`).join('');
+    }
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    // Setup speech recognition if available
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.onresult = function(event) {
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    textInput.value += event.results[i][0].transcript;
+                }
+            }
+        };
+        recordBtn.onclick = () => recognition.start();
+    } else {
+        recordBtn.disabled = true;
+    }
+
+    // Speak text
+    speakBtn.onclick = function() {
+        const utterance = new SpeechSynthesisUtterance(textInput.value);
+        const selectedVoice = voiceSelect.value;
+        const voice = voices.find(v => v.name === selectedVoice);
+        if (voice) {
+            utterance.voice = voice;
+        }
+        utterance.rate = rate.value;
+        utterance.pitch = pitch.value;
+        utterance.volume = volume.value;
+        speechSynthesis.speak(utterance);
+
+        // Save to dialogue
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble-right mb-2 p-2 rounded-lg max-w-md';
+        bubble.textContent = textInput.value;
+        dialogue.appendChild(bubble);
+
+        // Store voice config in local storage
+        localStorage.setItem('voiceConfig', JSON.stringify({rate: rate.value, pitch: pitch.value, volume: volume.value, voice: selectedVoice}));
+    };
+
+    // Character count
+    textInput.oninput = () => charCount.textContent = `${textInput.value.length} characters`;
+
+    // Load previous settings
+    const savedConfig = JSON.parse(localStorage.getItem('voiceConfig') || '{}');
+    if (savedConfig.voice) {
+        voiceSelect.value = savedConfig.voice;
+        rate.value = savedConfig.rate;
+        pitch.value = savedConfig.pitch;
+        volume.value = savedConfig.volume;
+    }
+});
+</script>
+
+</body>
+</html>

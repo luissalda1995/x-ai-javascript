@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text to Speech & Dialogue Playback Widget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-6 flex items-center justify-center min-h-screen">
+
+  <div class="flex space-x-4 w-full max-w-4xl">
+    <!-- Left Section: Input & Controls -->
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+      <h1 class="text-2xl font-semibold mb-4 text-center">Text to Speech & Dialogue Playback</h1>
+
+      <textarea id="text" class="w-full p-3 border border-gray-300 rounded-lg mb-2" rows="4" placeholder="Enter your text or record your voice..."></textarea>
+      <p class="text-right text-gray-600 text-sm mb-4" id="charCount">0 characters</p>
+
+      <div class="mb-4">
+        <button id="recordButton" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">Start Voice Recording</button>
+        <p id="recordingStatus" class="text-sm text-center mt-2"></p>
+      </div>
+
+      <label class="block mb-2">Voice</label>
+      <select id="voiceSelect" class="w-full p-3 border border-gray-300 rounded-lg mb-4"></select>
+
+      <label class="block mb-2">Pitch</label>
+      <input id="pitch" type="range" min="0" max="2" value="1" step="0.1" class="w-full mb-4">
+
+      <label class="block mb-2">Rate</label>
+      <input id="rate" type="range" min="0.5" max="2" value="1" step="0.1" class="w-full mb-4">
+
+      <label class="block mb-2">Volume</label>
+      <input id="volume" type="range" min="0" max="1" value="1" step="0.1" class="w-full mb-4">
+
+      <div class="grid grid-cols-2 gap-4">
+        <button id="playButton" class="bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">Play Text</button>
+        <button id="saveButton" class="bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600">Save Conversation</button>
+      </div>
+    </div>
+
+    <!-- Right Section: Chat Display -->
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+      <h2 class="text-xl font-semibold mb-4">Dialogue History</h2>
+      <div id="chatContainer" class="space-y-4 overflow-y-auto h-96 p-2 border border-gray-300 rounded-lg">
+        <!-- Conversations will be displayed here -->
+      </div>
+      <button id="playAllButton" class="w-full bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 mt-4">Play All Dialogue</button>
+    </div>
+  </div>
+
+  <script>
+    const synth = window.speechSynthesis;
+    const voiceSelect = document.getElementById('voiceSelect');
+    const playButton = document.getElementById('playButton');
+    const saveButton = document.getElementById('saveButton');
+    const playAllButton = document.getElementById('playAllButton');
+    const recordButton = document.getElementById('recordButton');
+    const pitch = document.getElementById('pitch');
+    const rate = document.getElementById('rate');
+    const volume = document.getElementById('volume');
+    const text = document.getElementById('text');
+    const charCount = document.getElementById('charCount');
+    const recordingStatus = document.getElementById('recordingStatus');
+    const chatContainer = document.getElementById('chatContainer');
+
+    let conversationHistory = []; // Array to store the conversation history
+    let isRecording = false; // Custom flag to track recording status
+    let messageCount = 0; // Count to track the message alignment
+
+    // Populate available voices in the voice selector
+    function populateVoices() {
+      const voices = synth.getVoices();
+      voiceSelect.innerHTML = '';
+      voices.filter(voice => voice.lang.startsWith('es')).forEach(voice => {
+        const option = document.createElement('option');
+        option.textContent = `${voice.name} (${voice.lang})`;
+        option.value = voice.name;
+        voiceSelect.appendChild(option);
+      });
+    }
+
+    // Load voices when they change
+    synth.onvoiceschanged = populateVoices;
+
+    // Play the entered text with the selected configuration
+    playButton.addEventListener('click', () => {
+      if (synth.speaking) {
+        synth.cancel();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text.value);
+      const selectedVoice = synth.getVoices().find(voice => voice.name === voiceSelect.value);
+      utterance.voice = selectedVoice;
+      utterance.pitch = pitch.value;
+      utterance.rate = rate.value;
+      utterance.volume = volume.value;
+
+      synth.speak(utterance);
+    });
+
+    // Save the current text and voice configuration to the conversation history
+    saveButton.addEventListener('click', () => {
+      const currentConversation = {
+        text: text.value,
+        voice: voiceSelect.value,
+        pitch: pitch.value,
+        rate: rate.value,
+        volume: volume.value,
+      };
+
+      conversationHistory.push(currentConversation); // Add the current conversation to the history
+      updateChatDisplay(currentConversation); // Update chat display
+      text.value = ''; // Clear the text area after saving
+      charCount.textContent = '0 characters'; // Reset character count
+    });
+
+    // Play all saved conversations in sequence as a dialogue
+    playAllButton.addEventListener('click', () => {
+      let index = 0;
+
+      function playNext() {
+        if (index < conversationHistory.length) {
+          const conversation = conversationHistory[index];
+          const utterance = new SpeechSynthesisUtterance(conversation.text);
+          const selectedVoice = synth.getVoices().find(voice => voice.name === conversation.voice);
+          utterance.voice = selectedVoice;
+          utterance.pitch = conversation.pitch;
+          utterance.rate = conversation.rate;
+          utterance.volume = conversation.volume;
+
+          utterance.onend = () => {
+            index++;
+            playNext(); // Recursively play the next conversation
+          };
+
+          synth.speak(utterance);
+        }
+      }
+
+      playNext(); // Start playing the dialogue
+    });
+
+    // Update chat display with alternating left and right alignment and different colors
+    function updateChatDisplay(conversation) {
+      const chatBubble = document.createElement('div');
+      const alignment = messageCount % 2 === 0 ? 'justify-start' : 'justify-end'; // Alternating alignment
+      const bgColor = messageCount % 2 === 0 ? 'bg-blue-100' : 'bg-green-100'; // Different colors for left and right
+
+      chatBubble.classList.add('flex', alignment);
+
+      chatBubble.innerHTML = `
+        <div class="p-3 max-w-xs ${bgColor} rounded-lg shadow-sm">
+          <p><strong>Voice:</strong> ${conversation.voice}</p>
+          <p><strong>Text:</strong> ${conversation.text}</p>
+          <p><strong>Pitch:</strong> ${conversation.pitch}, <strong>Rate:</strong> ${conversation.rate}, <strong>Volume:</strong> ${conversation.volume}</p>
+        </div>
+      `;
+
+      chatContainer.appendChild(chatBubble);
+      chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom as new messages come in
+      messageCount++; // Increment the message count
+    }
+
+    // Live character count
+    text.addEventListener('input', () => {
+      charCount.textContent = `${text.value.length} characters`;
+    });
+
+    // Voice recording and speech recognition (Speech-to-Text)
+    const recognition = window.SpeechRecognition || window.webkitSpeechRecognition ? new (window.SpeechRecognition || window.webkitSpeechRecognition)() : null;
+    if (recognition) {
+      recognition.continuous = false; // Automatically stop after a pause in speech
+      recognition.interimResults = false; // Only final results will be displayed
+      recognition.lang = 'es-ES'; // Set language to Spanish
+
+      recordButton.addEventListener('click', () => {
+        if (!isRecording) {
+          recognition.start();
+          isRecording = true; // Set flag to true
+          recordingStatus.textContent = 'Recording...';
+          recordButton.textContent = 'Recording...';
+        } else {
+          recognition.stop();
+          isRecording = false; // Set flag to false
+          recordingStatus.textContent = 'Stopped recording.';
+          recordButton.textContent = 'Start Voice Recording';
+        }
+      });
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        text.value += transcript;
+        charCount.textContent = `${text.value.length} characters`;
+      };
+
+      recognition.onerror = (event) => {
+        recordingStatus.textContent = `Error occurred: ${event.error}`;
+        isRecording = false; // Reset flag if there's an error
+        recordButton.textContent = 'Start Voice Recording';
+      };
+
+      recognition.onend = () => {
+        recordingStatus.textContent = 'Recording ended.';
+        isRecording = false; // Set flag to false when recognition ends
+        recordButton.textContent = 'Start Voice Recording';
+      };
+    } else {
+      recordingStatus.textContent = 'Speech Recognition is not supported in this browser.';
+      recordButton.disabled = true;
+    }
+  </script>
+
+</body>
+</html>

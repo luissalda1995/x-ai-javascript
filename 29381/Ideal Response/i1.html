@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Arrow Game with Scoring</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.1/TweenMax.min.js"></script>
+    <script src="//s3-us-west-2.amazonaws.com/s.cdpn.io/16327/MorphSVGPlugin.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            margin: 20px;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        span {
+            color: white;
+            font-family: sans-serif;
+            opacity: .3;
+        }
+        .score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<div class="score">Score: 0</div>
+
+<svg id="game" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" overflow="visible">
+    <linearGradient id="ArcGradient">
+        <stop offset="0" stop-color="#fff" stop-opacity=".2"/>
+        <stop offset="50%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <path id="arc" fill="none" stroke="url(#ArcGradient)" stroke-width="4" d="M100,250c250-400,550-400,800,0" pointer-events="none"/>
+    <defs>
+        <g id="arrow">
+            <line x2="60" fill="none" stroke="#888" stroke-width="2"/>
+            <polygon fill="#888" points="64 0 58 2 56 0 58 -2"/>
+            <polygon fill="#88ce02" points="2 -3 -4 -3 -1 0 -4 3 2 3 5 0"/>
+        </g>
+    </defs>
+
+    <g id="targets"></g>
+
+    <g id="bow" fill="none" stroke-linecap="round" vector-effect="non-scaling-stroke" pointer-events="none">
+        <polyline fill="none" stroke="#ddd" stroke-linecap="round" points="88,200 88,250 88,300"/>
+        <path fill="none" stroke="#88ce02" stroke-width="3" stroke-linecap="round" d="M88,300 c0-10.1,12-25.1,12-50s-12-39.9-12-50"/>
+    </g>
+    <g class="arrow-angle" opacity="0"> <!-- Initially hidden -->
+        <use x="100" y="250" xlink:href="#arrow"/>
+    </g>
+    <clipPath id="mask">
+        <polygon opacity=".5" points="0,0 1500,0 1500,200 970,290 950,240 925,220 875,280 890,295 920,310 0,350" pointer-events="none"/>
+    </clipPath>
+    <g class="arrows" clip-path="url(#mask)" pointer-events="none"></g>
+
+    <g class="miss" fill="#aaa" opacity="0" transform="translate(0, 100)">
+		<path d="M358 194L363 118 386 120 400 153 416 121 440 119 446 203 419 212 416 163 401 180 380 160 381 204"/>
+		<path d="M450 120L458 200 475 192 474 121"/>
+		<path d="M537 118L487 118 485 160 515 162 509 177 482 171 482 193 529 199 538 148 501 146 508 133 537 137"/>
+		<path d="M540 202L543 178 570 186 569 168 544 167 546 122 590 116 586 142 561 140 560 152 586 153 586 205"/>
+		<path d="M595,215l5-23l31,0l-5,29L595,215z M627,176l13-70l-41-0l-0,70L627,176z"/>
+	</g>
+	<g class="bullseye" fill="#F4531C" opacity="0">
+		<path d="M322,159l15-21l-27-13l-32,13l15,71l41-14l7-32L322,159z M292,142h20l3,8l-16,8 L292,142z M321,182l-18,9l-4-18l23-2V182z"/>
+		<path d="M340 131L359 125 362 169 381 167 386 123 405 129 392 183 351 186z"/>
+		<path d="M413 119L402 188 450 196 454 175 422 175 438 120z"/>
+		<path d="M432 167L454 169 466 154 451 151 478 115 453 113z"/>
+		<path d="M524 109L492 112 466 148 487 155 491 172 464 167 463 184 502 191 513 143 487 141 496 125 517 126z"/>
+		<path d="M537 114L512 189 558 199 566 174 533 175 539 162 553 164 558 150 543 145 547 134 566 148 575 124z"/>
+		<path d="M577 118L587 158 570 198 587 204 626 118 606 118 598 141 590 112z"/>
+		<path d="M635 122L599 198 643 207 649 188 624 188 630 170 639 178 645 162 637 158 649 143 662 151 670 134z"/>
+		<path d="M649,220l4-21l28,4l-6,25L649,220z M681,191l40-79l-35-8L659,184L681,191z"/>
+	</g>
+	<g class="hit" fill="#ffcc00" opacity="0" transform="translate(180, -80) rotate(12) ">
+		<path d="M383 114L385 195 407 191 406 160 422 155 418 191 436 189 444 112 423 119 422 141 407 146 400 113"/>
+		<path d="M449 185L453 113 477 112 464 186"/>
+		<path d="M486 113L484 130 506 130 481 188 506 187 520 131 540 135 545 119"/>
+		<path d="M526,195l5-20l22,5l-9,16L526,195z M558,164l32-44l-35-9l-19,51L558,164z"/>
+	</g>
+
+</svg>
+
+<span>Draw back an arrow and launch it!</span>
+
+<script>
+var svg = document.querySelector("svg");
+var cursor = svg.createSVGPoint();
+var arrows = document.querySelector(".arrows");
+var randomAngle = 0;
+var score = 0;
+var scoreDisplay = document.querySelector(".score");
+
+// bow rotation point
+var pivot = { x: 100, y: 250 };
+aim({ clientX: 320, clientY: 300 });
+
+// Scoring system based on target size
+var targetScores = { small: 50, medium: 30, large: 10 };
+
+// Function to generate random targets
+var numTargets = 5; // Number of targets
+var minDistance = 700; // Ensure the targets are on the other side of the screen (right side)
+var maxDistance = 900; // Max distance for targets
+var targets = [];
+var lineSegments = [];
+
+// Generate random targets and add to SVG
+function generateTargets() {
+    var targetsGroup = document.getElementById("targets");
+    for (var i = 0; i < numTargets; i++) {
+        createTarget(targetsGroup);
+    }
+}
+
+// Create a single target
+function createTarget(targetsGroup) {
+    // Generate random x and y positions, ensuring they're on the right side of the screen
+    var randomX = Math.random() * (maxDistance - minDistance) + minDistance;
+    var randomY = Math.random() * 200 + 150; // Vertically within game area
+
+    // Randomly choose target size: small, medium, large
+    var sizes = ["small", "medium", "large"];
+    var chosenSize = sizes[Math.floor(Math.random() * sizes.length)];
+    var targetSize = { small: 10, medium: 20, large: 30 }[chosenSize]; // Size scale for each type
+
+    // Create target group
+    var targetGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    targetGroup.classList.add("target");
+    targetGroup.setAttribute("data-score", targetScores[chosenSize]);
+    targetGroup.setAttribute("transform", `translate(${randomX}, ${randomY})`);
+
+    // Create target circles (outer and inner)
+    var outerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    outerCircle.setAttribute("fill", "#FFF");
+    outerCircle.setAttribute("r", targetSize); // Use random size
+    outerCircle.setAttribute("cx", 0);
+    outerCircle.setAttribute("cy", 0);
+
+    var innerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    innerCircle.setAttribute("fill", "#F4531C");
+    innerCircle.setAttribute("r", targetSize / 2); // Inner circle smaller
+    innerCircle.setAttribute("cx", 0);
+    innerCircle.setAttribute("cy", 0);
+
+    // Append circles to target group
+    targetGroup.appendChild(outerCircle);
+    targetGroup.appendChild(innerCircle);
+    targetsGroup.appendChild(targetGroup);
+
+    // Store target position and corresponding line segment for hit detection
+    targets.push({ x: randomX, y: randomY });
+    lineSegments.push({
+        x1: randomX - targetSize, y1: randomY + targetSize,
+        x2: randomX + targetSize, y2: randomY - targetSize
+    });
+}
+
+// Remove target and generate a new one
+function replaceTarget(index) {
+    var targetsGroup = document.getElementById("targets");
+
+    // Remove the target from SVG
+    var targetElement = document.querySelectorAll('.target')[index];
+    targetsGroup.removeChild(targetElement);
+
+    // Remove the target from arrays
+    targets.splice(index, 1);
+    lineSegments.splice(index, 1);
+
+    // Generate a new target
+    createTarget(targetsGroup);
+}
+
+// Remove arrow from screen
+function removeArrow(arrow) {
+    if (arrow && arrow.parentNode) {
+        arrow.parentNode.removeChild(arrow);
+    }
+}
+
+generateTargets();
+
+window.addEventListener("mousedown", draw);
+
+function draw(e) {
+    randomAngle = (Math.random() * Math.PI * 0.03) - 0.015;
+
+    // Hide the arrow during the drawing action
+    TweenMax.set(".arrow-angle", {opacity: 0});
+
+    window.addEventListener("mousemove", aim);
+    window.addEventListener("mouseup", loose);
+    aim(e);
+}
+
+function aim(e) {
+    var point = getMouseSVG(e);
+    point.x = Math.min(point.x, pivot.x - 7);
+    point.y = Math.max(point.y, pivot.y + 7);
+    var dx = point.x - pivot.x;
+    var dy = point.y - pivot.y;
+    var angle = Math.atan2(dy, dx) + randomAngle;
+    var bowAngle = angle - Math.PI;
+    var distance = Math.min(Math.sqrt((dx * dx) + (dy * dy)), 50);
+    var scale = Math.min(Math.max(distance / 30, 1), 2);
+    
+    TweenMax.to("#bow", 0.3, {scaleX: scale, rotation: bowAngle + "rad", transformOrigin: "right center"});
+    var arrowX = Math.min(pivot.x - ((1 / scale) * distance), 88);
+    TweenMax.to(".arrow-angle", 0.3, {rotation: bowAngle + "rad", svgOrigin: "100 250"});
+    TweenMax.to(".arrow-angle use", 0.3, {x: -distance});
+    TweenMax.to("#bow polyline", 0.3, {
+        attr: {points: "88,200 " + Math.min(pivot.x - ((1 / scale) * distance), 88) + ",250 88,300"}
+    });
+
+    var radius = distance * 9;
+    var offset = {x: (Math.cos(bowAngle) * radius), y: (Math.sin(bowAngle) * radius)};
+    var arcWidth = offset.x * 3;
+
+    TweenMax.to("#arc", 0.3, {
+        attr: {d: "M100,250c" + offset.x + "," + offset.y + "," + (arcWidth - offset.x) + "," + (offset.y + 50) + "," + arcWidth + ",50"},
+        autoAlpha: distance / 60
+    });
+}
+
+function loose() {
+    window.removeEventListener("mousemove", aim);
+    window.removeEventListener("mouseup", loose);
+
+    // Show the arrow when firing
+    TweenMax.set(".arrow-angle", {opacity: 1});
+    
+    TweenMax.to("#bow", 0.4, {scaleX: 1, transformOrigin: "right center", ease: Elastic.easeOut});
+    TweenMax.to("#bow polyline", 0.4, {attr: {points: "88,200 88,250 88,300"}, ease: Elastic.easeOut});
+
+    var newArrow = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    newArrow.setAttributeNS('http://www.w3.org/1999/xlink', 'href', "#arrow");
+    arrows.appendChild(newArrow);
+
+    var path = MorphSVGPlugin.pathDataToBezier("#arc");
+    TweenMax.to([newArrow], 0.5, {
+        force3D: true,
+        bezier: {type: "cubic", values: path, autoRotate: ["x", "y", "rotation"]},
+        onUpdate: hitTest,
+        onUpdateParams: ["{self}", newArrow],
+        onComplete: () => onMiss(newArrow),
+        ease: Linear.easeNone
+    });
+
+    TweenMax.to("#arc", 0.3, {opacity: 0});
+}
+
+// Display hit animation
+function showHitAnimation() {
+    TweenMax.set(".hit", {opacity: 1});
+    TweenMax.to(".hit", 1, {opacity: 0, delay: 1});
+}
+
+// Display miss animation
+function showMissAnimation() {
+    TweenMax.set(".miss", {opacity: 1});
+    TweenMax.to(".miss", 1, {opacity: 0, delay: 1});
+}
+
+// Display bullseye animation
+function showBullseyeAnimation() {
+    TweenMax.set(".bullseye", {opacity: 1});
+    TweenMax.to(".bullseye", 1, {opacity: 0, delay: 1});
+}
+
+function hitTest(tween, arrow) {
+    var transform = arrow._gsTransform;
+    var radians = transform.rotation * Math.PI / 180;
+    var arrowSegment = {
+        x1: transform.x,
+        y1: transform.y,
+        x2: (Math.cos(radians) * 60) + transform.x,
+        y2: (Math.sin(radians) * 60) + transform.y
+    };
+
+    let hit = false;
+
+    targets.forEach(function(target, index) {
+        var lineSegment = lineSegments[index];
+        var intersection = getIntersection(arrowSegment, lineSegment);
+        if (intersection && intersection.segment1 && intersection.segment2) {
+            tween.pause();
+            var targetElement = document.querySelectorAll('.target')[index];
+            var points = parseInt(targetElement.getAttribute("data-score"));
+
+            updateScore(points);
+
+            // Replace the hit target with a new one
+            replaceTarget(index);
+
+            // Remove the arrow once the target is hit
+            removeArrow(arrow);
+
+            // Check for bullseye hit (very close to center)
+            var dx = intersection.x - target.x;
+            var dy = intersection.y - target.y;
+            var distance = Math.sqrt((dx * dx) + (dy * dy));
+
+            if (distance < 7) {
+                showBullseyeAnimation();
+            } else {
+                showHitAnimation();
+            }
+
+            hit = true;
+        }
+    });
+
+    return hit;
+}
+
+function updateScore(points) {
+    score += points;
+    scoreDisplay.textContent = `Score: ${score}`;
+}
+
+function onMiss(arrow) {
+    // If the arrow misses the target
+    removeArrow(arrow);
+    showMissAnimation();
+}
+
+function getMouseSVG(e) {
+    cursor.x = e.clientX;
+    cursor.y = e.clientY;
+    return cursor.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function getIntersection(segment1, segment2) {
+    var dx1 = segment1.x2 - segment1.x1;
+    var dy1 = segment1.y2 - segment1.y1;
+    var dx2 = segment2.x2 - segment2.x1;
+    var dy2 = segment2.y2 - segment2.y1;
+    var cx = segment1.x1 - segment2.x1;
+    var cy = segment1.y1 - segment2.y1;
+    var denominator = dy2 * dx1 - dx2 * dy1;
+    if (denominator == 0) {
+        return null;
+    }
+    var ua = (dx2 * cy - dy2 * cx) / denominator;
+    var ub = (dx1 * cy - dy1 * cx) / denominator;
+    return {
+        x: segment1.x1 + ua * dx1,
+        y: segment1.y1 + ua * dy1,
+        segment1: ua >= 0 && ua <= 1,
+        segment2: ub >= 0 && ub <= 1
+    };
+}
+</script>
+
+</body>
+</html>

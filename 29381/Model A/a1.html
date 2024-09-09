@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Archery Game</title>
+<style>
+    body { 
+        margin: 0; 
+        background: #e0f7fa; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: 'Arial', sans-serif;
+    }
+    #gameArea {
+        width: 800px;
+        height: 400px;
+        background: #fff;
+        border: 2px solid #000;
+        position: relative;
+    }
+    #score {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 20px;
+    }
+    .target {
+        cursor: crosshair;
+    }
+    .message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        opacity: 0;
+    }
+</style>
+</head>
+<body>
+
+<div id="gameArea">
+    <div id="score">Score: 0</div>
+    <div id="message" class="message"></div>
+    <svg id="gameSVG" width="800" height="400">
+        <!-- Bow -->
+        <path id="bow" d="M100 200 Q 100 100, 200 200 Q 100 300, 100 200" stroke="brown" stroke-width="5" fill="none"/>
+        <!-- Arrow -->
+        <line id="arrow" x1="100" y1="200" x2="150" y2="200" stroke="black" stroke-width="2"/>
+        <!-- Targets will be dynamically added here -->
+    </svg>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+<script>
+    const svg = document.getElementById('gameSVG');
+    const bow = document.getElementById('bow');
+    const arrow = document.getElementById('arrow');
+    const scoreDisplay = document.getElementById('score');
+    const messageDisplay = document.getElementById('message');
+    let score = 0;
+    let isDrawing = false;
+    let startX, startY;
+
+    // Targets setup
+    const targets = [
+        {size: 20, points: 50, x: 700, y: 200},
+        {size: 40, points: 25, x: 600, y: 100},
+        {size: 60, points: 10, x: 650, y: 300}
+    ];
+
+    // Draw targets
+    targets.forEach(target => {
+        let circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+        circle.setAttribute('cx', target.x);
+        circle.setAttribute('cy', target.y);
+        circle.setAttribute('r', target.size);
+        circle.setAttribute('fill', 'red');
+        circle.setAttribute('class', 'target');
+        svg.appendChild(circle);
+    });
+
+    // Mouse events for drawing the bow
+    svg.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        let distance = Math.min(Math.hypot(e.clientX - startX, e.clientY - startY), 100);
+        let angle = Math.atan2(e.clientY - startY, e.clientX - startX);
+        gsap.to(arrow, {
+            x2: 100 + distance * Math.cos(angle),
+            y2: 200 + distance * Math.sin(angle),
+            duration: 0.1
+        });
+    });
+
+    document.addEventListener('mouseup', (e) => {
+        if (isDrawing) {
+            isDrawing = false;
+            let distance = Math.min(Math.hypot(e.clientX - startX, e.clientY - startY), 100);
+            let angle = Math.atan2(e.clientY - startY, e.clientX - startX);
+            shootArrow(angle, distance / 100); // Normalize distance for speed
+        }
+    });
+
+    function shootArrow(angle, speed) {
+        const endX = 800 * Math.cos(angle) * speed + 100;
+        const endY = 800 * Math.sin(angle) * speed + 200;
+        gsap.to(arrow, {
+            x: endX,
+            y: endY,
+            duration: speed,
+            onComplete: checkCollision
+        });
+    }
+
+    function checkCollision() {
+        let arrowTip = {x: parseFloat(arrow.getAttribute('x2')), y: parseFloat(arrow.getAttribute('y2'))};
+        let hit = false;
+
+        targets.forEach(target => {
+            let distance = Math.hypot(arrowTip.x - target.x, arrowTip.y - target.y);
+            if (distance <= target.size) {
+                score += target.points;
+                scoreDisplay.textContent = `Score: ${score}`;
+                showMessage("Hit!", "green");
+                hit = true;
+            }
+        });
+
+        if (!hit) {
+            showMessage("Miss!", "red");
+        }
+
+        // Reset arrow
+        gsap.to(arrow, {x2: 100, y2: 200, duration: 0.5, onComplete: () => gsap.set(arrow, {x: 100, y: 200})});
+    }
+
+    function showMessage(text, color) {
+        messageDisplay.textContent = text;
+        messageDisplay.style.color = color;
+        gsap.to(messageDisplay, {opacity: 1, duration: 0.5, yoyo: true, repeat: 1, onComplete: () => gsap.set(messageDisplay, {opacity: 0})});
+    }
+</script>
+</body>
+</html>

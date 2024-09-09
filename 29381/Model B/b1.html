@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Archery Game</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+<style>
+    body { 
+        margin: 0; 
+        overflow: hidden; 
+        background: #f0f8ff; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    #gameArea {
+        position: relative;
+        width: 800px;
+        height: 600px;
+    }
+    #bow, #arrow, .target, #scoreBoard {
+        position: absolute;
+    }
+    #scoreBoard {
+        right: 10px;
+        top: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    #message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2em;
+        display: none;
+    }
+</style>
+</head>
+<body>
+<div id="gameArea">
+    <svg id="bow" width="100" height="100" viewBox="0 0 100 100">
+        <!-- SVG for bow -->
+    </svg>
+    <svg id="arrow" width="50" height="5">
+        <!-- SVG for arrow -->
+    </svg>
+    <div id="scoreBoard">Score: <span id="score">0</span></div>
+    <div id="message"></div>
+</div>
+
+<script>
+    const gameArea = document.getElementById('gameArea');
+    let score = 0;
+    const scoreDisplay = document.getElementById('score');
+    
+    // SVG elements creation
+    const bow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    bow.setAttribute('d', 'M50 10 C20 80, 80 80, 50 10'); // Simplified bow shape
+    document.getElementById('bow').appendChild(bow);
+
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    arrow.setAttribute('x', 50);
+    arrow.setAttribute('y', 47.5);
+    arrow.setAttribute('width', 30);
+    arrow.setAttribute('height', 5);
+    document.getElementById('arrow').appendChild(arrow);
+
+    // Game mechanics
+    let isDrawing = false;
+    let startX, startY;
+
+    // Function to create targets
+    function createTarget(size, x, y) {
+        const target = document.createElement('div');
+        target.className = 'target';
+        target.style.width = size + 'px';
+        target.style.height = size + 'px';
+        target.style.left = x + 'px';
+        target.style.top = y + 'px';
+        target.style.borderRadius = '50%';
+        target.style.background = 'radial-gradient(circle, white, red)';
+        gameArea.appendChild(target);
+        return target;
+    }
+
+    // Targets with different sizes for different points
+    [createTarget(50, 600, 200), createTarget(30, 650, 300), createTarget(70, 550, 400)];
+
+    // Drawing mechanics
+    gameArea.onmousedown = (e) => {
+        isDrawing = true;
+        [startX, startY] = [e.clientX, e.clientY];
+    };
+
+    document.onmousemove = (e) => {
+        if (!isDrawing) return;
+        let power = Math.min(Math.sqrt((e.clientX - startX)**2 + (e.clientY - startY)**2) / 10, 10);
+        gsap.to(arrow, {x: 50 + (e.clientX - startX)/2, y: 47.5 + (e.clientY - startY)/2, duration: 0.1});
+        gsap.to(bow, {attr:{d:`M50 10 C${50 - power*3} 80, ${50 + power*3} 80, 50 10`}, duration: 0.1});
+    };
+
+    document.onmouseup = (e) => {
+        if (isDrawing) {
+            isDrawing = false;
+            const angle = Math.atan2(e.clientY - startY, e.clientX - startX);
+            const power = Math.min(Math.sqrt((e.clientX - startX)**2 + (e.clientY - startY)**2) / 10, 10);
+
+            // Animate arrow flight
+            gsap.to(arrow, {
+                x: 750 * Math.cos(angle),
+                y: 750 * Math.sin(angle),
+                rotation: angle * (180/Math.PI),
+                duration: power,
+                onComplete: checkHit,
+                onCompleteParams: [angle, power]
+            });
+        }
+    };
+
+    function checkHit(angle, power) {
+        const arrowRect = arrow.getBoundingClientRect();
+        document.querySelectorAll('.target').forEach(target => {
+            const targetRect = target.getBoundingClientRect();
+            if (arrowRect.right >= targetRect.left && arrowRect.left <= targetRect.right &&
+                arrowRect.bottom >= targetRect.top && arrowRect.top <= targetRect.bottom) {
+                // Hit logic
+                score += Math.floor(100 / (parseInt(target.style.width) / 10));
+                scoreDisplay.textContent = score;
+                showMessage('Hit!', 'green');
+                target.remove();
+            }
+        });
+        if (!document.querySelector('.target')) {
+            showMessage('You Win!', 'blue');
+        }
+        gsap.set(arrow, {x: 50, y: 47.5, rotation: 0});
+        gsap.set(bow, {attr:{d:'M50 10 C20 80, 80 80, 50 10'}});
+    }
+
+    function showMessage(msg, color) {
+        const message = document.getElementById('message');
+        message.textContent = msg;
+        message.style.color = color;
+        message.style.display = 'block';
+        gsap.fromTo(message, {opacity: 0, scale: 0.5}, {opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.7)'});
+        setTimeout(() => gsap.to(message, {opacity: 0, duration: 0.5, onComplete: () => message.style.display = 'none'}), 2000);
+    }
+</script>
+</body>
+</html>
